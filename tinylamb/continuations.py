@@ -32,6 +32,11 @@ class Continuation:
     anonymous_captures: Set[int] = field(default_factory = set)
 
 @dataclass
+class ContinuationAssignment(Statement):
+    name: str
+    value: ContinuationChain
+
+@dataclass
 class ContinuationChain(Expr):
     continuations: List[Continuation]
     result_literal: Literal
@@ -54,7 +59,7 @@ class Context:
         self.continuations.append(Continuation(id, fn, arg))
         return AnonymousLiteral(id)
 
-def compute_continuations(prog: Expr) -> Expr:
+def compute_continuations(prog: List[Statement]) -> List[Statement]:
     def visit_program(prog: List[Statement]) -> List[Statement]:
         return [visit_statement(stmt) for stmt in prog]
 
@@ -63,11 +68,11 @@ def compute_continuations(prog: Expr) -> Expr:
             case Assignment() as ass:
                 return visit_assignment(ass)
 
-    def visit_assignment(ass: Assignment) -> Assignment:
+    def visit_assignment(ass: Assignment) -> ContinuationAssignment:
         chain = make_continuation_chain(ass.value)
         visit_continuation_chain(chain, None)
 
-        return Assignment(ass.name, chain)
+        return ContinuationAssignment(ass.name, chain)
 
     def make_continuation_chain(expr: Expr) -> ContinuationChain:
         ctx = Context()
@@ -79,7 +84,7 @@ def compute_continuations(prog: Expr) -> Expr:
             case CallStart() as call:
                 return visit_call_start(call, ctx)
             case Lambda(name, body, captures):
-                clamb = ContinuationLambda(name, make_continuation_chain(body), captures)
+                clamb = ContinuationLambda(name, make_continuation_chain(body), copy(captures))
                 return LambdaLiteral(clamb)
             case Ident() as ident:
                 return IdentLiteral(ident)
