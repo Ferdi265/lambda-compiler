@@ -2,8 +2,9 @@ from .ast import *
 from .resolve import *
 from .rechain import *
 from .continuations import *
+from .flattenimpls import *
 
-def pretty(prog: Expr):
+def pretty(prog: List[Statement]):
     indent = lambda depth: "    " * depth
 
     def visit_program(prog: List[Statement]) -> List[Statement]:
@@ -11,11 +12,18 @@ def pretty(prog: Expr):
 
     def visit_statement(stmt: Statement, depth: int):
         match stmt:
+            case ContinuationAssignment(name, value):
+                print(f"{indent(depth)}ContinuationAssignment")
+                print(f"{indent(depth)}- name: {name!r}")
+                print(f"{indent(depth)}- value:")
+                visit_expr(value, depth + 1)
             case Assignment(name, value):
                 print(f"{indent(depth)}Assignment")
                 print(f"{indent(depth)}- name: {name!r}")
                 print(f"{indent(depth)}- value:")
                 visit_expr(value, depth + 1)
+            case Implementation() as impl:
+                visit_implementation(impl, depth)
 
     def visit_expr(expr: Expr, depth: int):
         match expr:
@@ -63,6 +71,12 @@ def pretty(prog: Expr):
                 print(f"{indent(depth)}Anonymous({id})")
             case LambdaLiteral(lamb):
                 visit_expr(lamb, depth)
+            case ImplementationLiteral(impl):
+                print(f"{indent(depth)}Implementation({impl.name!r}, {impl.lambda_id}, {impl.continuation_id})")
+                if len(impl.ident_captures) != 0:
+                    print(f"{indent(depth)}- ident_captures: {impl.ident_captures}")
+                if len(impl.anonymous_captures) != 0:
+                    print(f"{indent(depth)}- anonymous_captures: {impl.anonymous_captures}")
 
     def visit_call_start(call: CallStart, depth: int):
         print(f"{indent(depth)}CallChain")
@@ -93,5 +107,32 @@ def pretty(prog: Expr):
 
         print(f"{indent(depth)}- result:")
         visit_literal(chain.result_literal, depth + 1)
+
+    def visit_implementation(impl: Implementation, depth: int):
+        print(f"{indent(depth)}{type(impl).__name__}({impl.name!r}, {impl.lambda_id}, {impl.continuation_id})")
+        if impl.arg_name is not None:
+            print(f"{indent(depth)}- arg_name:")
+            visit_literal(impl.arg_name, depth + 1)
+        if len(impl.ident_captures) != 0:
+            print(f"{indent(depth)}- ident_captures: {impl.ident_captures}")
+        if len(impl.anonymous_captures) != 0:
+            print(f"{indent(depth)}- anonymous_captures: {impl.anonymous_captures}")
+
+        match impl:
+            case ReturnImplementation() as impl:
+                print(f"{indent(depth)}- value:")
+                visit_literal(impl.value, depth + 1)
+            case TailCallImplementation() as impl:
+                print(f"{indent(depth)}- fn:")
+                visit_literal(impl.fn, depth + 1)
+                print(f"{indent(depth)}- arg:")
+                visit_literal(impl.arg, depth + 1)
+            case ContinueCallImplementation() as impl:
+                print(f"{indent(depth)}- fn:")
+                visit_literal(impl.fn, depth + 1)
+                print(f"{indent(depth)}- arg:")
+                visit_literal(impl.arg, depth + 1)
+                print(f"{indent(depth)}- next:")
+                visit_literal(impl.next, depth + 1)
 
     visit_program(prog)
