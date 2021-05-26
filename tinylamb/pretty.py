@@ -110,9 +110,9 @@ def pretty(prog: List[Statement]):
 
     def visit_implementation(impl: Implementation, depth: int):
         print(f"{indent(depth)}{type(impl).__name__}({impl.name!r}, {impl.lambda_id}, {impl.continuation_id})")
-        if impl.arg_name is not None:
-            print(f"{indent(depth)}- arg_name:")
-            visit_literal(impl.arg_name, depth + 1)
+        if impl.arg_literal is not None:
+            print(f"{indent(depth)}- arg_literal:")
+            visit_literal(impl.arg_literal, depth + 1)
         if len(impl.ident_captures) != 0:
             print(f"{indent(depth)}- ident_captures: {impl.ident_captures}")
         if len(impl.anonymous_captures) != 0:
