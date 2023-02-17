@@ -70,6 +70,8 @@ def resolve(prog: List[Statement], globals: Set[str]) -> List[Statement]:
         body = visit_expr(lamb.body, subctx)
         captures = ctx.locals & subctx.referenced
 
+        ctx.referenced |= captures
+
         return Lambda(lamb.name, body, captures)
 
     def visit_ident(ident: Ident, ctx: Context) -> Ident:

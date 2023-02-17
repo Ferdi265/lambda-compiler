@@ -56,15 +56,16 @@ def renumber_captures(prog: List[Statement]) -> List[Statement]:
                     return lit
                 case AnonymousLiteral(id):
                     return AnonymousLiteral(anonymous_capture_mapping[id])
-                case ImplementationLiteral(impl):
+                case ImplementationLiteral(impl_ref):
                     new_impl_captures = []
-                    for id in impl.anonymous_captures:
+
+                    for id in impl_ref.anonymous_captures:
                         new_impl_captures.append(lookup_anonymous(id))
-                    for ident in impl.ident_captures:
+                    for ident in impl_ref.ident_captures:
                         new_impl_captures.append(lookup_ident(ident))
 
                     # sanity checks
-                    old_impl_captures = list(impl.anonymous_captures) + list(impl.ident_captures)
+                    old_impl_captures = impl_ref.anonymous_captures + impl_ref.ident_captures
                     assert len(old_impl_captures) == len(new_impl_captures)
 
                     for a, b in zip(old_impl_captures, new_impl_captures):
@@ -76,12 +77,12 @@ def renumber_captures(prog: List[Statement]) -> List[Statement]:
                         assert a_id == b, f"mismatch: {a} ({a_id}) != {b}"
 
                     new_impl_ref = Implementation(
-                        impl.name,
-                        impl.lambda_id,
-                        impl.continuation_id,
+                        impl_ref.name,
+                        impl_ref.lambda_id,
+                        impl_ref.continuation_id,
                         None,
-                        set(),
-                        set(new_impl_captures)
+                        [],
+                        new_impl_captures
                     )
                     return ImplementationLiteral(new_impl_ref)
                 case _:
@@ -97,13 +98,13 @@ def renumber_captures(prog: List[Statement]) -> List[Statement]:
 
         new_impl = copy(impl)
         new_impl.arg_literal = map_literal(impl.arg_literal)
-        new_impl.ident_captures = set()
-        new_impl.anonymous_captures = set()
+        new_impl.ident_captures = []
+        new_impl.anonymous_captures = []
 
         for id in impl.anonymous_captures:
-            new_impl.anonymous_captures.add(map_anonymous(id))
+            new_impl.anonymous_captures.append(map_anonymous(id))
         for ident in impl.ident_captures:
-            new_impl.anonymous_captures.add(map_ident(ident))
+            new_impl.anonymous_captures.append(map_ident(ident))
 
         match new_impl:
             case ReturnImplementation() as ret_impl:

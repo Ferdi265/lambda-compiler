@@ -17,8 +17,8 @@ class Implementation(Statement):
     lambda_id: int
     continuation_id: int
     arg_literal: Optional[ValueLiteral]
-    ident_captures: Set[str]
-    anonymous_captures: Set[int]
+    ident_captures: List[str]
+    anonymous_captures: List[int]
 
 @dataclass
 class ReturnImplementation(Implementation):
@@ -49,7 +49,7 @@ class FlattenImplsContext:
         self.current_lambda_id += 1
         return LambdaContext(self, arg_name, id)
 
-    def implementation_literal(self, lambda_id: int, continuation_id: int, arg_name: Optional[ValueLiteral], ident_captures: Set[str], anonymous_captures: Set[int]) -> ImplementationLiteral:
+    def implementation_literal(self, lambda_id: int, continuation_id: int, arg_name: Optional[ValueLiteral], ident_captures: List[str], anonymous_captures: List[int]) -> ImplementationLiteral:
         return ImplementationLiteral(Implementation(
             self.current_assignment, lambda_id, continuation_id,
             arg_name, ident_captures, anonymous_captures
@@ -69,7 +69,7 @@ class LambdaContext:
         self.current_continuation_id += 1
         return id
 
-    def _impl_metadata(self) -> Tuple[str, int, int, Optional[ValueLiteral], Set[str], Set[int]]:
+    def _impl_metadata(self) -> Tuple[str, int, int, Optional[ValueLiteral], List[str], List[int]]:
         continuation_id = self.next_continuation_id()
 
         arg_lit: Optional[ValueLiteral]
@@ -81,7 +81,7 @@ class LambdaContext:
         else:
             arg_lit = AnonymousLiteral(continuation_id - 1)
 
-        return self.ctx.current_assignment, self.lambda_id, continuation_id, arg_lit, set(), set()
+        return self.ctx.current_assignment, self.lambda_id, continuation_id, arg_lit, [], []
 
     def _append(self, impl: I) -> I:
         self.ctx.implementations.append(impl)
@@ -124,7 +124,7 @@ def flatten_implementations(prog: List[Statement]) -> List[Statement]:
         if len(chain.continuations) == 0:
             value_lit = visit_literal(chain.result_literal, ctx)
             impl: Implementation = lctx.append_return(value_lit)
-            impl.ident_captures = ident_captures
+            impl.ident_captures = list(ident_captures)
 
             if arg_name in impl.ident_captures:
                 impl.ident_captures.remove(arg_name)
@@ -148,14 +148,14 @@ def flatten_implementations(prog: List[Statement]) -> List[Statement]:
                 if direct_continuation_optimization and i == len(chain.continuations) - 2:
                     next_lit = visit_literal(next.fn, ctx)
                 else:
-                    next_lit = ctx.implementation_literal(lctx.lambda_id, i + 1, AnonymousLiteral(i + 1), copy(next.ident_captures), copy(next.anonymous_captures))
+                    next_lit = ctx.implementation_literal(lctx.lambda_id, i + 1, AnonymousLiteral(i + 1), list(next.ident_captures), list(next.anonymous_captures))
 
                 impl = lctx.append_continue_call(fn_lit, arg_lit, next_lit)
             else:
                 impl = lctx.append_tail_call(fn_lit, arg_lit)
 
-            impl.ident_captures = copy(cont.ident_captures)
-            impl.anonymous_captures = copy(cont.anonymous_captures)
+            impl.ident_captures = list(cont.ident_captures)
+            impl.anonymous_captures = list(cont.anonymous_captures)
 
             if direct_continuation_optimization and i == len(chain.continuations) - 2:
                 break
@@ -166,7 +166,7 @@ def flatten_implementations(prog: List[Statement]) -> List[Statement]:
         match lit:
             case LambdaLiteral(lamb):
                 lambda_id = visit_continuation_chain(lamb.body, ctx, copy(lamb.captures), lamb.name)
-                return ctx.implementation_literal(lambda_id, 0, IdentLiteral(Local(lamb.name)), copy(lamb.captures), set())
+                return ctx.implementation_literal(lambda_id, 0, IdentLiteral(Local(lamb.name)), list(lamb.captures), [])
             case other:
                 return other
 
