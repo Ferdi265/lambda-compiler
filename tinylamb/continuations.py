@@ -21,7 +21,7 @@ class AnonymousLiteral(ValueLiteral):
 
 @dataclass
 class LambdaLiteral(ValueLiteral):
-    lamb: ContinuationLambda
+    lamb: CLambda
 
 @dataclass
 class Continuation:
@@ -32,7 +32,7 @@ class Continuation:
     anonymous_captures: Set[int] = field(default_factory = set)
 
 @dataclass
-class ContinuationAssignment(Statement):
+class CAssignment(Statement):
     name: str
     value: ContinuationChain
 
@@ -42,7 +42,7 @@ class ContinuationChain(Expr):
     result_literal: ValueLiteral
 
 @dataclass
-class ContinuationLambda(Expr):
+class CLambda(Expr):
     name: str
     body: ContinuationChain
     captures: Set[str] = field(default_factory = set)
@@ -73,11 +73,11 @@ def compute_continuations(prog: List[Statement]) -> List[Statement]:
             case _:
                 raise ComputeContinuationsError(f"unexpected AST node encountered: {stmt}")
 
-    def visit_assignment(ass: Assignment) -> ContinuationAssignment:
+    def visit_assignment(ass: Assignment) -> CAssignment:
         chain = make_continuation_chain(ass.value)
         visit_continuation_chain(chain, None)
 
-        return ContinuationAssignment(ass.name, chain)
+        return CAssignment(ass.name, chain)
 
     def make_continuation_chain(expr: Expr) -> ContinuationChain:
         ctx = ComputeContinuationsContext()
@@ -89,7 +89,7 @@ def compute_continuations(prog: List[Statement]) -> List[Statement]:
             case CallStart() as call:
                 return visit_call_start(call, ctx)
             case Lambda(name, body, captures):
-                clamb = ContinuationLambda(name, make_continuation_chain(body), copy(captures))
+                clamb = CLambda(name, make_continuation_chain(body), copy(captures))
                 return LambdaLiteral(clamb)
             case Ident() as ident:
                 return IdentLiteral(ident)
@@ -121,16 +121,18 @@ def compute_continuations(prog: List[Statement]) -> List[Statement]:
             else:
                 cur.ident_captures |= next.ident_captures
                 cur.anonymous_captures |= next.anonymous_captures
-                cur.anonymous_captures.remove(cur.id)
 
             visit_literal(cur.fn, cur)
             visit_literal(cur.arg, cur)
 
             if cur.id == 0:
-                if arg is not None:
+                if arg in cur.ident_captures:
                     cur.ident_captures.remove(arg)
             else:
-                cur.anonymous_captures.remove(cur.id - 1)
+                if cur.id - 1 in cur.anonymous_captures:
+                    cur.anonymous_captures.remove(cur.id - 1)
+
+            next = cur
 
     def visit_literal(lit: ValueLiteral, cur: Continuation):
         match lit:

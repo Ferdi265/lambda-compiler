@@ -12,8 +12,8 @@ def pretty(prog: List[Statement]):
 
     def visit_statement(stmt: Statement, depth: int):
         match stmt:
-            case ContinuationAssignment(name, value):
-                print(f"{indent(depth)}ContinuationAssignment")
+            case CAssignment(name, value):
+                print(f"{indent(depth)}CAssignment")
                 print(f"{indent(depth)}- name: {name!r}")
                 print(f"{indent(depth)}- value:")
                 visit_expr(value, depth + 1)
@@ -46,8 +46,8 @@ def pretty(prog: List[Statement]):
                 print(f"{indent(depth)}- captures: {captures}")
                 print(f"{indent(depth)}- body:")
                 visit_expr(body, depth + 1)
-            case ContinuationLambda(name, body, captures):
-                print(f"{indent(depth)}ContinuationLambda")
+            case CLambda(name, body, captures):
+                print(f"{indent(depth)}CLambda")
                 print(f"{indent(depth)}- name: {name!r}")
                 print(f"{indent(depth)}- captures: {captures}")
                 print(f"{indent(depth)}- body:")

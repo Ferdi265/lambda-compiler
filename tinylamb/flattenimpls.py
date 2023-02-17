@@ -107,12 +107,12 @@ def flatten_implementations(prog: List[Statement]) -> List[Statement]:
 
     def visit_statement(stmt: Statement, ctx: FlattenImplsContext):
         match stmt:
-            case ContinuationAssignment() as ass:
+            case CAssignment() as ass:
                 visit_assignment(ass, ctx)
             case _:
                 raise FlattenImplsError(f"unexpected AST node encountered: {stmt}")
 
-    def visit_assignment(ass: ContinuationAssignment, ctx: FlattenImplsContext):
+    def visit_assignment(ass: CAssignment, ctx: FlattenImplsContext):
         ctx.current_assignment = ass.name
         ctx.current_lambda_id = 0
         visit_continuation_chain(ass.value, ctx, None)
@@ -131,7 +131,7 @@ def flatten_implementations(prog: List[Statement]) -> List[Statement]:
             impl: Implementation = lctx.append_return(value_lit)
             impl.ident_captures = copy(last_ident_captures)
 
-            if arg_name is not None:
+            if arg_name in impl.ident_captures:
                 impl.ident_captures.remove(arg_name)
 
             return lctx.lambda_id
