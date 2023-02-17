@@ -11,6 +11,15 @@ testcases: List[Tuple[str, Set[str]]] = [
     ("or = a -> b -> a true b;", {"true", "false"}),
     ("xor = a -> b -> a (not b) b;", {"true", "false", "not"}),
 
+    ("pair = a -> b -> sel -> sel a b;", set()),
+    ("y = g -> (f -> f f) f -> g x -> f f x;", set()),
+    ("""while = y while -> cond -> f -> initial -> (
+        cond initial
+            (x -> while cond f (f initial))
+            (x -> initial)
+        ident
+    );""", {"y", "ident"}),
+
     ("""main = _ -> (do ident
         (_ -> puts (list_n 6
             (dec2 7 2)
@@ -32,15 +41,19 @@ testcases: List[Tuple[str, Set[str]]] = [
 ]
 
 def test(code: str, globals: Set[str]):
-    print(f"# TESTCASE: {code = !r}, {globals = }")
+    name = code.split("=", 1)[0].strip()
+    print(f"# TESTCASE {name}: {globals = }")
     try:
         cur = parsed = parse(code)
         cur = resolved = resolve(parsed, globals)
         cur = rechained = rechain(resolved)
         cur = continuations = compute_continuations(rechained)
         cur = flattened = flatten_implementations(continuations)
-    finally:
+        cur = renumbered = renumber_captures(flattened)
+        pretty_mlir(cur)
+    except Exception:
         pretty(cur)
+        raise
 
 for testcase in testcases:
     test(*testcase)
