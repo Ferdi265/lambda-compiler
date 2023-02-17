@@ -5,4 +5,6 @@ from .resolve import *
 from .rechain import *
 from .continuations import *
 from .flattenimpls import *
+from .renumber import *
 from .pretty import *
+

@@ -115,21 +115,16 @@ def flatten_implementations(prog: List[Statement]) -> List[Statement]:
     def visit_assignment(ass: CAssignment, ctx: FlattenImplsContext):
         ctx.current_assignment = ass.name
         ctx.current_lambda_id = 0
-        visit_continuation_chain(ass.value, ctx, None)
+        visit_continuation_chain(ass.value, ctx, set(), None)
 
-    def visit_continuation_chain(chain: ContinuationChain, ctx: FlattenImplsContext, arg_name: Optional[str]) -> int:
+    def visit_continuation_chain(chain: ContinuationChain, ctx: FlattenImplsContext, ident_captures: Set[str], arg_name: Optional[str]) -> int:
         lctx = ctx.lambda_context(arg_name)
 
         # check for single return
         if len(chain.continuations) == 0:
-            last_ident_captures: Set[str] = set()
-            match chain.result_literal:
-                case LambdaLiteral(lamb):
-                    last_ident_captures = lamb.captures
-
             value_lit = visit_literal(chain.result_literal, ctx)
             impl: Implementation = lctx.append_return(value_lit)
-            impl.ident_captures = copy(last_ident_captures)
+            impl.ident_captures = ident_captures
 
             if arg_name in impl.ident_captures:
                 impl.ident_captures.remove(arg_name)
@@ -170,7 +165,7 @@ def flatten_implementations(prog: List[Statement]) -> List[Statement]:
     def visit_literal(lit: ValueLiteral, ctx: FlattenImplsContext) -> ValueLiteral:
         match lit:
             case LambdaLiteral(lamb):
-                lambda_id = visit_continuation_chain(lamb.body, ctx, lamb.name)
+                lambda_id = visit_continuation_chain(lamb.body, ctx, copy(lamb.captures), lamb.name)
                 return ctx.implementation_literal(lambda_id, 0, IdentLiteral(Local(lamb.name)), copy(lamb.captures), set())
             case other:
                 return other

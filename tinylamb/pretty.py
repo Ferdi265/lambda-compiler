@@ -4,6 +4,9 @@ from .rechain import *
 from .continuations import *
 from .flattenimpls import *
 
+class PrettyError(Exception):
+    pass
+
 def pretty(prog: List[Statement]):
     indent = lambda depth: "    " * depth
 
@@ -134,5 +137,44 @@ def pretty(prog: List[Statement]):
                 visit_literal(impl.arg, depth + 1)
                 print(f"{indent(depth)}- next:")
                 visit_literal(impl.next, depth + 1)
+
+    visit_program(prog)
+
+def pretty_mlir(prog: List[Statement]):
+    def visit_program(prog: List[Statement]) -> List[Statement]:
+        return [visit_statement(stmt) for stmt in prog]
+
+    def visit_statement(stmt: Statement):
+        match stmt:
+            case Implementation() as impl:
+                visit_implementation(impl)
+            case _:
+                raise PrettyError("unexpected AST node encountered: {stmt}")
+
+    def visit_implementation(impl: Implementation):
+        assert impl.arg_literal is None or impl.arg_literal == AnonymousLiteral(0)
+        assert len(impl.ident_captures) == 0
+
+        print(f"impl {impl.name}!{impl.lambda_id}!{impl.continuation_id} = ", end="")
+
+        match impl:
+            case ReturnImplementation() as impl:
+                print(f"{visit_literal(impl.value)};")
+            case TailCallImplementation() as impl:
+                print(f"{visit_literal(impl.fn)} {visit_literal(impl.arg)};")
+            case ContinueCallImplementation() as impl:
+                print(f"{visit_literal(impl.fn)} {visit_literal(impl.arg)} -> {visit_literal(impl.next)};")
+
+    def visit_literal(lit: ValueLiteral) -> str:
+        match lit:
+            case IdentLiteral(Global(ident)):
+                return ident
+            case AnonymousLiteral(id):
+                return f"${id}"
+            case ImplementationLiteral(impl):
+                captures = " ".join(f"${id}" for id in impl.anonymous_captures)
+                return f"{impl.name}!{impl.lambda_id}!{impl.continuation_id}[{captures}]"
+            case _:
+                raise PrettyError("unexpected AST node encountered: {lit}")
 
     visit_program(prog)
