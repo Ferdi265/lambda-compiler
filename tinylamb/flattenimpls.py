@@ -8,7 +8,7 @@ from .resolve import Local, Global
 from .continuations import *
 
 @dataclass
-class ImplementationLiteral(Literal):
+class ImplementationLiteral(ValueLiteral):
     impl: Implementation
 
 @dataclass
@@ -16,30 +16,30 @@ class Implementation(Statement):
     name: str
     lambda_id: int
     continuation_id: int
-    arg_literal: Optional[Literal]
+    arg_literal: Optional[ValueLiteral]
     ident_captures: Set[str]
     anonymous_captures: Set[int]
 
 @dataclass
 class ReturnImplementation(Implementation):
-    value: Literal
+    value: ValueLiteral
 
 @dataclass
 class TailCallImplementation(Implementation):
-    fn: Literal
-    arg: Literal
+    fn: ValueLiteral
+    arg: ValueLiteral
 
 @dataclass
 class ContinueCallImplementation(Implementation):
-    fn: Literal
-    arg: Literal
-    next: Literal
+    fn: ValueLiteral
+    arg: ValueLiteral
+    next: ValueLiteral
 
-class FlattenImplError(Exception):
+class FlattenImplsError(Exception):
     pass
 
 @dataclass
-class Context:
+class FlattenImplsContext:
     current_assignment: str = field(default_factory = str)
     current_lambda_id: int = field(default_factory = int)
     implementations: List[Implementation] = field(default_factory = list)
@@ -49,7 +49,7 @@ class Context:
         self.current_lambda_id += 1
         return LambdaContext(self, arg_name, id)
 
-    def implementation_literal(self, lambda_id: int, continuation_id: int, arg_name: Optional[Literal], ident_captures: Set[str], anonymous_captures: Set[int]) -> ImplementationLiteral:
+    def implementation_literal(self, lambda_id: int, continuation_id: int, arg_name: Optional[ValueLiteral], ident_captures: Set[str], anonymous_captures: Set[int]) -> ImplementationLiteral:
         return ImplementationLiteral(Implementation(
             self.current_assignment, lambda_id, continuation_id,
             arg_name, ident_captures, anonymous_captures
@@ -59,7 +59,7 @@ I = TypeVar("I", bound = Implementation)
 
 @dataclass
 class LambdaContext:
-    ctx: Context
+    ctx: FlattenImplsContext
     arg_name: Optional[str]
     lambda_id: int
     current_continuation_id: int = field(default_factory = int)
@@ -69,9 +69,10 @@ class LambdaContext:
         self.current_continuation_id += 1
         return id
 
-    def _impl_metadata(self) -> Tuple[str, int, int, Optional[Literal], Set[str], Set[int]]:
+    def _impl_metadata(self) -> Tuple[str, int, int, Optional[ValueLiteral], Set[str], Set[int]]:
         continuation_id = self.next_continuation_id()
 
+        arg_lit: Optional[ValueLiteral]
         if self.arg_name is not None:
             arg_lit = IdentLiteral(Local(self.arg_name))
             self.arg_name = None
@@ -86,35 +87,37 @@ class LambdaContext:
         self.ctx.implementations.append(impl)
         return impl
 
-    def append_return(self, value: Literal) -> ReturnImplementation:
+    def append_return(self, value: ValueLiteral) -> ReturnImplementation:
         return self._append(ReturnImplementation(*self._impl_metadata(), value))
 
-    def append_tail_call(self, fn: Literal, arg: Literal) -> ReturnImplementation:
+    def append_tail_call(self, fn: ValueLiteral, arg: ValueLiteral) -> TailCallImplementation:
         return self._append(TailCallImplementation(*self._impl_metadata(), fn, arg))
 
-    def append_continue_call(self, fn: Literal, arg: Literal, next: Literal) -> ReturnImplementation:
+    def append_continue_call(self, fn: ValueLiteral, arg: ValueLiteral, next: ValueLiteral) -> ContinueCallImplementation:
         return self._append(ContinueCallImplementation(*self._impl_metadata(), fn, arg, next))
 
 def flatten_implementations(prog: List[Statement]) -> List[Statement]:
     def visit_program(prog: List[Statement]) -> List[Statement]:
-        ctx = Context()
+        ctx = FlattenImplsContext()
 
         for stmt in prog:
             visit_statement(stmt, ctx)
 
-        return ctx.implementations
+        return cast(List[Statement], ctx.implementations)
 
-    def visit_statement(stmt: Statement, ctx: Context):
+    def visit_statement(stmt: Statement, ctx: FlattenImplsContext):
         match stmt:
             case ContinuationAssignment() as ass:
                 visit_assignment(ass, ctx)
+            case _:
+                raise FlattenImplsError(f"unexpected AST node encountered: {stmt}")
 
-    def visit_assignment(ass: Assignment, ctx: Context):
+    def visit_assignment(ass: ContinuationAssignment, ctx: FlattenImplsContext):
         ctx.current_assignment = ass.name
         ctx.current_lambda_id = 0
         visit_continuation_chain(ass.value, ctx, None)
 
-    def visit_continuation_chain(chain: ContinuationChain, ctx: Context, arg_name: Optional[str]) -> int:
+    def visit_continuation_chain(chain: ContinuationChain, ctx: FlattenImplsContext, arg_name: Optional[str]) -> int:
         lctx = ctx.lambda_context(arg_name)
 
         # check for single return
@@ -125,7 +128,7 @@ def flatten_implementations(prog: List[Statement]) -> List[Statement]:
                     last_ident_captures = lamb.captures
 
             value_lit = visit_literal(chain.result_literal, ctx)
-            impl = lctx.append_return(value_lit)
+            impl: Implementation = lctx.append_return(value_lit)
             impl.ident_captures = copy(last_ident_captures)
 
             if arg_name is not None:
@@ -135,7 +138,7 @@ def flatten_implementations(prog: List[Statement]) -> List[Statement]:
 
         # assert tail call optimization is valid
         if chain.result_literal != AnonymousLiteral(len(chain.continuations) - 1):
-            raise FlattenImplError(f"unexpected result literal {chain.result_literal} in {ctx.current_assignment} lambda {lambda_id}")
+            raise FlattenImplsError(f"unexpected result literal {chain.result_literal} in {ctx.current_assignment} lambda {lctx.lambda_id}")
 
         # check if direct continuation optimization is valid
         direct_continuation_optimization = (chain.continuations[-1].arg == AnonymousLiteral(len(chain.continuations) - 2))
@@ -164,7 +167,7 @@ def flatten_implementations(prog: List[Statement]) -> List[Statement]:
 
         return lctx.lambda_id
 
-    def visit_literal(lit: Literal, ctx: Context) -> Literal:
+    def visit_literal(lit: ValueLiteral, ctx: FlattenImplsContext) -> ValueLiteral:
         match lit:
             case LambdaLiteral(lamb):
                 lambda_id = visit_continuation_chain(lamb.body, ctx, lamb.name)

@@ -8,26 +8,26 @@ from .resolve import Local, Global
 from .rechain import CallStart, CallChain
 
 @dataclass
-class Literal:
+class ValueLiteral:
     pass
 
 @dataclass
-class IdentLiteral(Literal):
+class IdentLiteral(ValueLiteral):
     ident: Ident
 
 @dataclass
-class AnonymousLiteral(Literal):
+class AnonymousLiteral(ValueLiteral):
     id: int
 
 @dataclass
-class LambdaLiteral(Literal):
+class LambdaLiteral(ValueLiteral):
     lamb: ContinuationLambda
 
 @dataclass
 class Continuation:
     id: int
-    fn: Literal
-    arg: Literal
+    fn: ValueLiteral
+    arg: ValueLiteral
     ident_captures: Set[str] = field(default_factory = set)
     anonymous_captures: Set[int] = field(default_factory = set)
 
@@ -39,7 +39,7 @@ class ContinuationAssignment(Statement):
 @dataclass
 class ContinuationChain(Expr):
     continuations: List[Continuation]
-    result_literal: Literal
+    result_literal: ValueLiteral
 
 @dataclass
 class ContinuationLambda(Expr):
@@ -47,12 +47,15 @@ class ContinuationLambda(Expr):
     body: ContinuationChain
     captures: Set[str] = field(default_factory = set)
 
+class ComputeContinuationsError(Exception):
+    pass
+
 @dataclass
-class Context:
+class ComputeContinuationsContext:
     current_id: int = field(default_factory = int)
     continuations: List[Continuation] = field(default_factory = list)
 
-    def append(self, fn: Literal, arg: Literal) -> Literal:
+    def append(self, fn: ValueLiteral, arg: ValueLiteral) -> ValueLiteral:
         id = self.current_id
         self.current_id += 1
 
@@ -67,6 +70,8 @@ def compute_continuations(prog: List[Statement]) -> List[Statement]:
         match stmt:
             case Assignment() as ass:
                 return visit_assignment(ass)
+            case _:
+                raise ComputeContinuationsError(f"unexpected AST node encountered: {stmt}")
 
     def visit_assignment(ass: Assignment) -> ContinuationAssignment:
         chain = make_continuation_chain(ass.value)
@@ -75,11 +80,11 @@ def compute_continuations(prog: List[Statement]) -> List[Statement]:
         return ContinuationAssignment(ass.name, chain)
 
     def make_continuation_chain(expr: Expr) -> ContinuationChain:
-        ctx = Context()
+        ctx = ComputeContinuationsContext()
         lit = visit_expr(expr, ctx)
         return ContinuationChain(ctx.continuations, lit)
 
-    def visit_expr(expr: Expr, ctx: Context) -> Literal:
+    def visit_expr(expr: Expr, ctx: ComputeContinuationsContext) -> ValueLiteral:
         match expr:
             case CallStart() as call:
                 return visit_call_start(call, ctx)
@@ -88,8 +93,10 @@ def compute_continuations(prog: List[Statement]) -> List[Statement]:
                 return LambdaLiteral(clamb)
             case Ident() as ident:
                 return IdentLiteral(ident)
+            case _:
+                raise ComputeContinuationsError(f"unexpected AST node encountered: {expr}")
 
-    def visit_call_start(call: CallStart, ctx: Context) -> Literal:
+    def visit_call_start(call: CallStart, ctx: ComputeContinuationsContext) -> ValueLiteral:
         lit = ctx.append(visit_expr(call.fn, ctx), visit_expr(call.arg, ctx))
 
         chain = call.next
@@ -125,7 +132,7 @@ def compute_continuations(prog: List[Statement]) -> List[Statement]:
             else:
                 cur.anonymous_captures.remove(cur.id - 1)
 
-    def visit_literal(lit: Literal, cur: ContinuationChain):
+    def visit_literal(lit: ValueLiteral, cur: Continuation):
         match lit:
             case AnonymousLiteral(id):
                 cur.anonymous_captures.add(id)

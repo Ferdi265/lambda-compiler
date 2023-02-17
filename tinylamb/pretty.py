@@ -59,7 +59,7 @@ def pretty(prog: List[Statement]):
             case Ident(name):
                 print(f"{indent(depth)}Ident({name!r})")
 
-    def visit_literal(lit: Literal, depth: int):
+    def visit_literal(lit: ValueLiteral, depth: int):
         match lit:
             case IdentLiteral(Local(name)):
                 print(f"{indent(depth)}Local({name!r})")

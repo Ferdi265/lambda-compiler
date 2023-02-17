@@ -26,6 +26,8 @@ def rechain(prog: List[Statement]) -> List[Statement]:
         match stmt:
             case Assignment(name, value):
                 return Assignment(name, visit_chain(value))
+            case _:
+                raise RechainError(f"unexpected AST node encountered: {stmt}")
 
     def visit_expr(expr: Expr) -> Expr:
         match expr:
@@ -37,8 +39,8 @@ def rechain(prog: List[Statement]) -> List[Statement]:
                 return Lambda(name, visit_chain(body), captures)
             case Ident() as ident:
                 return ident
-            case unknown:
-                raise RechainError(f"unexpected AST node encountered: {unknown}")
+            case _:
+                raise RechainError(f"unexpected AST node encountered: {expr}")
 
     def visit_chain(expr: Expr) -> Expr:
         chain = build_chain(expr)
@@ -61,7 +63,7 @@ def rechain(prog: List[Statement]) -> List[Statement]:
             return chain.pop()
 
         first = CallStart(chain.pop(), chain.pop())
-        prev = first
+        prev: Union[CallStart, CallChain] = first
         while len(chain) > 0:
             cur = CallChain(chain.pop())
             prev.next = cur

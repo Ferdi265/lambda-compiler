@@ -1,6 +1,5 @@
 from typing import *
 from enum import Enum, auto
-import copy
 import re
 
 from .ast import *
@@ -15,7 +14,7 @@ class Token(Enum):
     End = auto()
 
 patterns: List[Tuple[str, Optional[Token]]] = [
-    (" +", None),
+    ("( |\n)+", None),
     ("=", Token.Assign),
     (";", Token.SemiColon),
     ("\\(", Token.ParenOpen),
@@ -62,7 +61,7 @@ def parse(s: str) -> List[Statement]:
         drop()
         return cs
 
-    def err():
+    def err() -> NoReturn:
         raise ParseError(f"parse error at ({cur}, '{curs}')")
 
     def parse_paren() -> Paren:
@@ -97,7 +96,7 @@ def parse(s: str) -> List[Statement]:
         return Assignment(name, value)
 
     def parse_prog() -> List[Statement]:
-        statements = []
+        statements: List[Statement] = []
         while cur != Token.End:
             statements.append(parse_assignment())
 

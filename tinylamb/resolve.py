@@ -38,6 +38,8 @@ def resolve(prog: List[Statement], globals: Set[str]) -> List[Statement]:
         match stmt:
             case Assignment() as ass:
                 return visit_assignment(ass, ctx)
+            case unknown:
+                raise ResolveError(f"unexpected AST node encountered: {unknown}")
 
     def visit_assignment(ass: Assignment, ctx: Context) -> Assignment:
         if ass.name in ctx.globals:
