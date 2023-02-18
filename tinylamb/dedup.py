@@ -14,6 +14,7 @@ class DedupImplementationsContext:
     implementations: List[Implementation] = field(default_factory = list)
     instances: List[Instance] = field(default_factory = list)
     definitions: List[InstanceDefinition] = field(default_factory = list)
+    program: List[Statement] = field(default_factory = list)
 
     inst_hash: Dict[Tuple[str, int], tuple] = field(default_factory = dict)
     impl_hash: Dict[Tuple[str, int, int], tuple] = field(default_factory = dict)
@@ -112,8 +113,6 @@ class DedupImplementationsContext:
             self.instances.append(inst)
 
     def deduplicate(self, prog: List[Statement]):
-        print("before:", len(prog))
-
         queue = prog
         while len(queue) > 0:
             for stmt in queue[:]:
@@ -139,12 +138,64 @@ class DedupImplementationsContext:
                     case InstanceDefinition() as inst_def:
                         self.definitions.append(inst_def)
 
-        print("after:", len(self.implementations) + len(self.instances) + len(self.definitions))
-
 def dedup_implementations(prog: List[Statement]) -> List[Statement]:
     def visit_program(prog: List[Statement]) -> List[Statement]:
         ctx = DedupImplementationsContext()
+
+        print("before:", len(prog))
+
         ctx.deduplicate(prog)
-        return cast(List[Statement], ctx.implementations) + cast(List[Statement], ctx.instances) + cast(List[Statement], ctx.definitions)
+
+        print("dedup:", len(ctx.implementations) + len(ctx.instances) + len(ctx.definitions))
+
+        for inst_def in ctx.definitions:
+            visit_inst_def(inst_def, ctx)
+
+        print("elim:", len(ctx.program))
+
+        return ctx.program
+
+    def visit_inst_def(inst_def: InstanceDefinition, ctx: DedupImplementationsContext):
+        if inst_def in ctx.program:
+            return
+
+        visit_inst(inst_def.inst, ctx)
+
+        ctx.program.append(inst_def)
+
+    def visit_inst(inst: Instance, ctx: DedupImplementationsContext):
+        if inst in ctx.program:
+            return
+
+        visit_impl(inst.impl, ctx)
+
+        for capture in inst.captures:
+            visit_inst(capture, ctx)
+
+        ctx.program.append(inst)
+
+    def visit_impl(impl: Implementation, ctx: DedupImplementationsContext):
+        if impl in ctx.program:
+            return
+
+        match impl:
+            case ReturnImplementation() as impl:
+                visit_lit(impl.value, ctx)
+            case TailCallImplementation() as impl:
+                visit_lit(impl.fn, ctx)
+                visit_lit(impl.arg, ctx)
+            case ContinueCallImplementation() as impl:
+                visit_lit(impl.fn, ctx)
+                visit_lit(impl.arg, ctx)
+                visit_lit(impl.next, ctx)
+
+        ctx.program.append(impl)
+
+    def visit_lit(lit: ValueLiteral, ctx: DedupImplementationsContext):
+        match lit:
+            case InstanceLiteral(inst):
+                visit_inst(inst, ctx)
+            case ImplementationLiteral(impl):
+                visit_impl(impl, ctx)
 
     return visit_program(prog)
