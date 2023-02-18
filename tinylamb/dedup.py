@@ -54,7 +54,11 @@ class DedupImplementationsContext:
             case AnonymousLiteral(id):
                 return ("anonymous", id)
             case ImplementationLiteral(impl):
-                lit.impl, hash_value = self.dedup_impl(impl)
+                dedup_impl, hash_value = self.dedup_impl(impl)
+                lit.impl = Implementation(
+                    dedup_impl.name, dedup_impl.lambda_id, dedup_impl.continuation_id,
+                    impl.arg_literal, impl.ident_captures, impl.anonymous_captures
+                )
                 return ("impl", hash_value, tuple(impl.anonymous_captures))
             case InstanceLiteral(inst):
                 lit.inst, hash_value = self.dedup_inst(inst)
@@ -194,8 +198,10 @@ def dedup_implementations(prog: List[Statement]) -> List[Statement]:
     def visit_lit(lit: ValueLiteral, ctx: DedupImplementationsContext):
         match lit:
             case InstanceLiteral(inst):
+                inst, _ = ctx.dedup_inst(inst)
                 visit_inst(inst, ctx)
             case ImplementationLiteral(impl):
+                impl, _ = ctx.dedup_impl(impl)
                 visit_impl(impl, ctx)
 
     return visit_program(prog)

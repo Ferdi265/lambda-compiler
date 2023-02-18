@@ -154,13 +154,13 @@ def pretty_mlir(prog: List[Statement]):
             case InstanceDefinition() as inst_def:
                 visit_instance_definition(inst_def)
             case _:
-                raise PrettyError("unexpected AST node encountered: {stmt}")
+                raise PrettyError(f"unexpected AST node encountered: {stmt}")
 
     def visit_implementation(impl: Implementation):
         assert impl.arg_literal is None or impl.arg_literal == AnonymousLiteral(0)
         assert len(impl.ident_captures) == 0
 
-        print(f"impl {impl.name}!{impl.lambda_id}!{impl.continuation_id} = ", end="")
+        print(f"impl std::{impl.name}!{impl.lambda_id}!{impl.continuation_id} = ", end="")
 
         match impl:
             case ReturnImplementation() as impl:
@@ -169,27 +169,29 @@ def pretty_mlir(prog: List[Statement]):
                 print(f"{visit_literal(impl.fn)} {visit_literal(impl.arg)};")
             case ContinueCallImplementation() as impl:
                 print(f"{visit_literal(impl.fn)} {visit_literal(impl.arg)} -> {visit_literal(impl.next)};")
+            case _:
+                raise PrettyError(f"unexpected AST node encountered: {impl}")
 
     def visit_instance(inst: Instance):
         impl = inst.impl
-        captures = " ".join(f"{i.name}%{i.inst_id}" for i in inst.captures)
-        print(f"inst {inst.name}%{inst.inst_id} = {impl.name}!{impl.lambda_id}!{impl.continuation_id}[{captures}];")
+        captures = " ".join(f"std::{i.name}%{i.inst_id}" for i in inst.captures)
+        print(f"inst std::{inst.name}%{inst.inst_id} = std::{impl.name}!{impl.lambda_id}!{impl.continuation_id}[{captures}];")
 
     def visit_instance_definition(inst_def: InstanceDefinition):
         inst = inst_def.inst
-        print(f"pub {inst_def.name} = {inst.name}%{inst.inst_id};")
+        print(f"pub std::{inst_def.name} = std::{inst.name}%{inst.inst_id};")
 
     def visit_literal(lit: ValueLiteral) -> str:
         match lit:
             case IdentLiteral(Global(ident)):
-                return ident
+                return "std::" + ident
             case AnonymousLiteral(id):
                 return f"${id}"
             case ImplementationLiteral(impl):
                 captures = " ".join(f"${id}" for id in impl.anonymous_captures)
-                return f"{impl.name}!{impl.lambda_id}!{impl.continuation_id}[{captures}]"
+                return f"std::{impl.name}!{impl.lambda_id}!{impl.continuation_id}[{captures}]"
             case InstanceLiteral(inst):
-                return f"{inst.name}%{inst.inst_id}"
+                return f"std::{inst.name}%{inst.inst_id}"
             case _:
                 raise PrettyError(f"unexpected AST node encountered: {lit}")
 
