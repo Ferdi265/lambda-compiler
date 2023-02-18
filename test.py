@@ -142,7 +142,7 @@ def test(code: str, globals: Set[str]):
         cur = flattened = flatten_implementations(continuations)
         cur = renumbered = renumber_captures(flattened)
         cur = instantiated = instantiate_implementations(renumbered)
-        #cur = dedup = dedup_implementations(renumbered)
+        cur = dedup = dedup_implementations(instantiated)
         pretty_mlir(cur)
     except Exception:
         pretty(cur)
