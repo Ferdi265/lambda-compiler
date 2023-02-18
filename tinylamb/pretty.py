@@ -3,6 +3,7 @@ from .resolve import *
 from .rechain import *
 from .continuations import *
 from .flattenimpls import *
+from .instantiate import *
 
 class PrettyError(Exception):
     pass
@@ -148,6 +149,10 @@ def pretty_mlir(prog: List[Statement]):
         match stmt:
             case Implementation() as impl:
                 visit_implementation(impl)
+            case Instance() as inst:
+                visit_instance(inst)
+            case InstanceDefinition() as inst_def:
+                visit_instance_definition(inst_def)
             case _:
                 raise PrettyError("unexpected AST node encountered: {stmt}")
 
@@ -165,6 +170,15 @@ def pretty_mlir(prog: List[Statement]):
             case ContinueCallImplementation() as impl:
                 print(f"{visit_literal(impl.fn)} {visit_literal(impl.arg)} -> {visit_literal(impl.next)};")
 
+    def visit_instance(inst: Instance):
+        impl = inst.impl
+        captures = " ".join(f"{i.name}%{i.inst_id}" for i in inst.captures)
+        print(f"inst {inst.name}%{inst.inst_id} = {impl.name}!{impl.lambda_id}!{impl.continuation_id}[{captures}];")
+
+    def visit_instance_definition(inst_def: InstanceDefinition):
+        inst = inst_def.inst
+        print(f"pub {inst_def.name} = {inst.name}%{inst.inst_id};")
+
     def visit_literal(lit: ValueLiteral) -> str:
         match lit:
             case IdentLiteral(Global(ident)):
@@ -174,7 +188,9 @@ def pretty_mlir(prog: List[Statement]):
             case ImplementationLiteral(impl):
                 captures = " ".join(f"${id}" for id in impl.anonymous_captures)
                 return f"{impl.name}!{impl.lambda_id}!{impl.continuation_id}[{captures}]"
+            case InstanceLiteral(inst):
+                return f"{inst.name}%{inst.inst_id}"
             case _:
-                raise PrettyError("unexpected AST node encountered: {lit}")
+                raise PrettyError(f"unexpected AST node encountered: {lit}")
 
     visit_program(prog)

@@ -6,5 +6,6 @@ from .rechain import *
 from .continuations import *
 from .flattenimpls import *
 from .renumber import *
+from .dedup import *
 from .pretty import *
 
