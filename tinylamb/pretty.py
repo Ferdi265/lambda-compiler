@@ -141,7 +141,12 @@ def pretty(prog: List[Statement]):
 
     visit_program(prog)
 
-def pretty_mlir(prog: List[Statement]):
+def pretty_mlir(prog: List[Statement], crate: Optional[str] = None):
+    if crate is None:
+        crate_prefix = ""
+    else:
+        crate_prefix = f"{crate}::"
+
     def visit_program(prog: List[Statement]) -> List[Statement]:
         return [visit_statement(stmt) for stmt in prog]
 
@@ -160,7 +165,7 @@ def pretty_mlir(prog: List[Statement]):
         assert impl.arg_literal is None or impl.arg_literal == AnonymousLiteral(0)
         assert len(impl.ident_captures) == 0
 
-        print(f"impl std::{impl.name}!{impl.lambda_id}!{impl.continuation_id} = ", end="")
+        print(f"impl {crate_prefix}{impl.name}!{impl.lambda_id}!{impl.continuation_id} = ", end="")
 
         match impl:
             case ReturnImplementation() as impl:
@@ -174,24 +179,24 @@ def pretty_mlir(prog: List[Statement]):
 
     def visit_instance(inst: Instance):
         impl = inst.impl
-        captures = " ".join(f"std::{i.name}%{i.inst_id}" for i in inst.captures)
-        print(f"inst std::{inst.name}%{inst.inst_id} = std::{impl.name}!{impl.lambda_id}!{impl.continuation_id}[{captures}];")
+        captures = " ".join(f"{crate_prefix}{i.name}%{i.inst_id}" for i in inst.captures)
+        print(f"inst {crate_prefix}{inst.name}%{inst.inst_id} = {crate_prefix}{impl.name}!{impl.lambda_id}!{impl.continuation_id}[{captures}];")
 
     def visit_instance_definition(inst_def: InstanceDefinition):
         inst = inst_def.inst
-        print(f"pub std::{inst_def.name} = std::{inst.name}%{inst.inst_id};")
+        print(f"pub {crate_prefix}{inst_def.name} = {crate_prefix}{inst.name}%{inst.inst_id};")
 
     def visit_literal(lit: ValueLiteral) -> str:
         match lit:
             case IdentLiteral(Global(ident)):
-                return "std::" + ident
+                return f"{crate_prefix}{ident}"
             case AnonymousLiteral(id):
                 return f"${id}"
             case ImplementationLiteral(impl):
                 captures = " ".join(f"${id}" for id in impl.anonymous_captures)
-                return f"std::{impl.name}!{impl.lambda_id}!{impl.continuation_id}[{captures}]"
+                return f"{crate_prefix}{impl.name}!{impl.lambda_id}!{impl.continuation_id}[{captures}]"
             case InstanceLiteral(inst):
-                return f"std::{inst.name}%{inst.inst_id}"
+                return f"{crate_prefix}{inst.name}%{inst.inst_id}"
             case _:
                 raise PrettyError(f"unexpected AST node encountered: {lit}")
 

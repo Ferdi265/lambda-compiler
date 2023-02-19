@@ -24,6 +24,23 @@ testcases: List[Tuple[str, Set[str]]] = [
     );
      """, set()),
 
+    ("""
+    y = g -> (f -> f f) f -> g x -> f f x;
+    count = y count -> f -> initial -> nat ->
+        nat
+            (pred -> _ -> count f (f initial) pred)
+            initial;
+     """, set()),
+
+    ("""
+    y = g -> (f -> f f) f -> g x -> f f x;
+    map = y map -> f -> list ->
+        empty list
+            (x -> nil)
+            (x -> prepend (f (first list)) (map f (rest list)))
+        ident;
+    """, {"empty", "prepend", "first", "rest", "nil", "ident"}),
+
     ("""main = _ -> (do ident
         (_ -> puts (list_n 6
             (dec2 7 2)
