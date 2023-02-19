@@ -1,5 +1,6 @@
 from typing import *
 from dataclasses import dataclass, field
+from .orderedset import OrderedSet
 
 @dataclass
 class Statement:
@@ -27,7 +28,7 @@ class Call(Expr):
 class Lambda(Expr):
     name: str
     body: Expr
-    captures: Set[str] = field(default_factory = set)
+    captures: OrderedSet[str] = field(default_factory = OrderedSet)
 
 @dataclass
 class Ident(Expr):

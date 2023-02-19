@@ -18,17 +18,17 @@ class ResolveError(Exception):
 
 @dataclass
 class Context:
-    globals: Set[str] = field(default_factory = set)
-    locals: Set[str] = field(default_factory = set)
-    referenced: Set[str] = field(default_factory = set)
+    globals: OrderedSet[str] = field(default_factory = OrderedSet)
+    locals: OrderedSet[str] = field(default_factory = OrderedSet)
+    referenced: OrderedSet[str] = field(default_factory = OrderedSet)
 
     def __copy__(self) -> Context:
-        return Context(copy(self.globals), copy(self.locals))
+        return Context(copy(self.globals), copy(self.locals), OrderedSet())
 
     def __contains__(self, arg: str) -> bool:
         return arg in self.locals or arg in self.globals
 
-def resolve(prog: List[Statement], globals: Set[str]) -> List[Statement]:
+def resolve(prog: List[Statement], globals: OrderedSet[str]) -> List[Statement]:
     """resolve idents into locals and globals and populate lambda captures"""
 
     def visit_program(prog: List[Statement], ctx: Context) -> List[Statement]:

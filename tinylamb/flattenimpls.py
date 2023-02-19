@@ -115,9 +115,9 @@ def flatten_implementations(prog: List[Statement]) -> List[Statement]:
     def visit_assignment(ass: CAssignment, ctx: FlattenImplsContext):
         ctx.current_assignment = ass.name
         ctx.current_lambda_id = 0
-        visit_continuation_chain(ass.value, ctx, set(), None)
+        visit_continuation_chain(ass.value, ctx, OrderedSet(), None)
 
-    def visit_continuation_chain(chain: ContinuationChain, ctx: FlattenImplsContext, ident_captures: Set[str], arg_name: Optional[str]) -> int:
+    def visit_continuation_chain(chain: ContinuationChain, ctx: FlattenImplsContext, ident_captures: OrderedSet[str], arg_name: Optional[str]) -> int:
         lctx = ctx.lambda_context(arg_name)
 
         # check for single return

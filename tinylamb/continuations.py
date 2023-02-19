@@ -28,8 +28,8 @@ class Continuation:
     id: int
     fn: ValueLiteral
     arg: ValueLiteral
-    ident_captures: Set[str] = field(default_factory = set)
-    anonymous_captures: Set[int] = field(default_factory = set)
+    ident_captures: OrderedSet[str] = field(default_factory = OrderedSet)
+    anonymous_captures: OrderedSet[int] = field(default_factory = OrderedSet)
 
 @dataclass
 class CAssignment(Statement):
@@ -45,7 +45,7 @@ class ContinuationChain(Expr):
 class CLambda(Expr):
     name: str
     body: ContinuationChain
-    captures: Set[str] = field(default_factory = set)
+    captures: OrderedSet[str] = field(default_factory = OrderedSet)
 
 class ComputeContinuationsError(Exception):
     pass
@@ -109,7 +109,7 @@ def compute_continuations(prog: List[Statement]) -> List[Statement]:
     def visit_continuation_chain(chain: ContinuationChain, arg: Optional[str]):
         next: Optional[Continuation] = None
 
-        last_ident_captures: Set[str] = set()
+        last_ident_captures: OrderedSet[str] = OrderedSet()
         match chain.result_literal:
             case LambdaLiteral(lamb):
                 visit_continuation_chain(lamb.body, lamb.name)
