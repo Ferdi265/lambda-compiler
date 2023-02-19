@@ -6,10 +6,10 @@ testcases: List[Tuple[str, OrderedSet[str]]] = [
     ("true = a -> b -> a;", OrderedSet()),
     ("false = a -> b -> b;", OrderedSet()),
 
-    ("not = a -> a false true;", OrderedSet({"true", "false"})),
-    ("and = a -> b -> a b false;", OrderedSet({"true", "false"})),
-    ("or = a -> b -> a true b;", OrderedSet({"true", "false"})),
-    ("xor = a -> b -> a (not b) b;", OrderedSet({"true", "false", "not"})),
+    ("not = a -> a false true;", OrderedSet(["true", "false"])),
+    ("and = a -> b -> a b false;", OrderedSet(["true", "false"])),
+    ("or = a -> b -> a true b;", OrderedSet(["true", "false"])),
+    ("xor = a -> b -> a (not b) b;", OrderedSet(["true", "false", "not"])),
 
     ("pair = a -> b -> sel -> sel a b;", OrderedSet()),
     ("y = g -> (f -> f f) f -> g x -> f f x;", OrderedSet()),
@@ -39,7 +39,7 @@ testcases: List[Tuple[str, OrderedSet[str]]] = [
             (x -> nil)
             (x -> prepend (f (first list)) (map f (rest list)))
         ident;
-    """, OrderedSet({"empty", "prepend", "first", "rest", "nil", "ident"})),
+    """, OrderedSet(["empty", "prepend", "first", "rest", "nil", "ident"])),
 
     ("""main = _ -> (do ident
         (_ -> puts (list_n 6
@@ -58,7 +58,7 @@ testcases: List[Tuple[str, OrderedSet[str]]] = [
             (dec2 1 0 0)
             (dec2 1 0)
         ))
-    );""", OrderedSet({"do", "ident", "puts", "list_n", "dec2", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"})),
+    );""", OrderedSet(["do", "ident", "puts", "list_n", "dec2", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"])),
 
     ("""
     true = a -> b -> a;
