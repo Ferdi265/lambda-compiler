@@ -12,8 +12,15 @@ setup(
     version = __version__,
     author = "Ferdinand Bachmann",
     author_email = "theferdi265@gmail.com",
-    packages = ["tinylamb"],
-    entry_points = {},
+    packages = ["tinylamb", "tinylamb.cli"],
+    entry_points = {
+        "console_scripts": [
+            "hlir2mlir=tinylamb.cli.hlir2mlir:main"
+        ]
+    },
+    package_data = {
+        "tinylamb": ["py.typed"]
+    },
     python_requires = ">=3.10",
     install_requires = requirements
 )

@@ -10,7 +10,7 @@ def main():
     elif len(args) == 2:
         file, crate = args[0], args[1]
     else:
-        print("usage: hlir2mlir.py <file> [crate]", file = sys.stderr)
+        print("usage: hlir2mlir <file> [crate]", file = sys.stderr)
         sys.exit(1)
 
     with open(file, "r") as f:
