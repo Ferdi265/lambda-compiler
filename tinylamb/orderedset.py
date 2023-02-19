@@ -21,7 +21,7 @@ class OrderedSet(Generic[T]):
             self.data.remove(key)
 
     def __copy__(self) -> OrderedSet[T]:
-        return OrderedSet(iter(self))
+        return OrderedSet(self)
 
     def __iter__(self) -> Iterator[T]:
         return iter(self.data)
