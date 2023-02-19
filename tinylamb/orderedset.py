@@ -10,12 +10,12 @@ class OrderedSet(Generic[T]):
         else:
             self.dict = {key: None for key in iterable}
 
-    def add(self, item: T):
-        if item not in self.dict:
-            self.dict[item] = None
+    def add(self, key: T):
+        self.dict[key] = None
 
-    def remove(self, item: T):
-        del self.dict[item]
+    def remove(self, key: Optional[T]):
+        if key is not None:
+            del self.dict[key]
 
     def __copy__(self) -> OrderedSet[T]:
         return OrderedSet(iter(self))
@@ -23,8 +23,9 @@ class OrderedSet(Generic[T]):
     def __iter__(self) -> Iterator[T]:
         return iter(self.dict.keys())
 
-    def __in__(self, key: T) -> bool:
-        return key in self.dict
+    def __in__(self, key: Optional[T]) -> bool:
+        if key is not None:
+            return key in self.dict
 
     def __and__(self, other: OrderedSet[T]) -> OrderedSet[T]:
         return OrderedSet(key for key in self if key in other)

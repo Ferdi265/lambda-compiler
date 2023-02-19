@@ -113,6 +113,10 @@ def compute_continuations(prog: List[Statement]) -> List[Statement]:
         match chain.result_literal:
             case LambdaLiteral(lamb):
                 visit_continuation_chain(lamb.body, lamb.name)
+
+                if len(lamb.body.continuations) > 0:
+                    lamb.captures = copy(lamb.body.continuations[0]).ident_captures
+
                 last_ident_captures = lamb.captures
 
         for cur in reversed(chain.continuations):
