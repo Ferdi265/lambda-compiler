@@ -1,18 +1,18 @@
 from typing import *
 from tinylamb import *
 
-testcases: List[Tuple[str, Set[str]]] = [
-    ("ident = a -> a;", set()),
-    ("true = a -> b -> a;", set()),
-    ("false = a -> b -> b;", set()),
+testcases: List[Tuple[str, OrderedSet[str]]] = [
+    ("ident = a -> a;", OrderedSet()),
+    ("true = a -> b -> a;", OrderedSet()),
+    ("false = a -> b -> b;", OrderedSet()),
 
-    ("not = a -> a false true;", {"true", "false"}),
-    ("and = a -> b -> a b false;", {"true", "false"}),
-    ("or = a -> b -> a true b;", {"true", "false"}),
-    ("xor = a -> b -> a (not b) b;", {"true", "false", "not"}),
+    ("not = a -> a false true;", OrderedSet({"true", "false"})),
+    ("and = a -> b -> a b false;", OrderedSet({"true", "false"})),
+    ("or = a -> b -> a true b;", OrderedSet({"true", "false"})),
+    ("xor = a -> b -> a (not b) b;", OrderedSet({"true", "false", "not"})),
 
-    ("pair = a -> b -> sel -> sel a b;", set()),
-    ("y = g -> (f -> f f) f -> g x -> f f x;", set()),
+    ("pair = a -> b -> sel -> sel a b;", OrderedSet()),
+    ("y = g -> (f -> f f) f -> g x -> f f x;", OrderedSet()),
     ("""
     ident = a -> a;
     y = g -> (f -> f f) f -> g x -> f f x;
@@ -22,7 +22,7 @@ testcases: List[Tuple[str, Set[str]]] = [
             (x -> initial)
         ident
     );
-     """, set()),
+     """, OrderedSet()),
 
     ("""
     y = g -> (f -> f f) f -> g x -> f f x;
@@ -30,7 +30,7 @@ testcases: List[Tuple[str, Set[str]]] = [
         nat
             (pred -> _ -> count f (f initial) pred)
             initial;
-     """, set()),
+     """, OrderedSet()),
 
     ("""
     y = g -> (f -> f f) f -> g x -> f f x;
@@ -39,7 +39,7 @@ testcases: List[Tuple[str, Set[str]]] = [
             (x -> nil)
             (x -> prepend (f (first list)) (map f (rest list)))
         ident;
-    """, {"empty", "prepend", "first", "rest", "nil", "ident"}),
+    """, OrderedSet({"empty", "prepend", "first", "rest", "nil", "ident"})),
 
     ("""main = _ -> (do ident
         (_ -> puts (list_n 6
@@ -58,7 +58,7 @@ testcases: List[Tuple[str, Set[str]]] = [
             (dec2 1 0 0)
             (dec2 1 0)
         ))
-    );""", {"do", "ident", "puts", "list_n", "dec2", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}),
+    );""", OrderedSet({"do", "ident", "puts", "list_n", "dec2", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"})),
 
     ("""
     true = a -> b -> a;
@@ -145,10 +145,10 @@ testcases: List[Tuple[str, Set[str]]] = [
             (x -> el -> append_n (pred nat) (append list el))
         ident;
     list_n = nat -> append_n nat nil;
-    """, set())
+    """, OrderedSet())
 ]
 
-def test(code: str, globals: Set[str]):
+def test(code: str, globals: OrderedSet[str]):
     name = code.split("=", 1)[0].strip()
     print(f"# TESTCASE {name}: {globals = }")
     try:
