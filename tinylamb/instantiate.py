@@ -154,6 +154,9 @@ def instantiate_implementations(prog: List[Statement]) -> List[Statement]:
 
     def visit_literal(lit: ValueLiteral, ctx: InstantiateContext) -> ValueLiteral:
         match lit:
+            case IdentLiteral(Global(ident)):
+                if ident in ctx.def_table:
+                    return InstanceLiteral(ctx.def_table[ident].inst)
             case ImplementationLiteral(impl):
                 impl = ctx.resolve_impl(impl)
                 if len(impl.anonymous_captures) == 0:
