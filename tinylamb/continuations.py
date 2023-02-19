@@ -116,6 +116,7 @@ def compute_continuations(prog: List[Statement]) -> List[Statement]:
 
                 if len(lamb.body.continuations) > 0:
                     lamb.captures = copy(lamb.body.continuations[0]).ident_captures
+                    lamb.captures.remove(lamb.name)
 
                 last_ident_captures = lamb.captures
 
