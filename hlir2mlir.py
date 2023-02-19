@@ -17,7 +17,7 @@ def main():
         code = f.read()
 
     ast = parse(code)
-    ast = resolve(ast, set())
+    ast = resolve(ast, OrderedSet())
     ast = rechain(ast)
     ast = compute_continuations(ast)
     ast = flatten_implementations(ast)
