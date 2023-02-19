@@ -146,16 +146,10 @@ def dedup_implementations(prog: List[Statement]) -> List[Statement]:
     def visit_program(prog: List[Statement]) -> List[Statement]:
         ctx = DedupImplementationsContext()
 
-        print("before:", len(prog))
-
         ctx.deduplicate(prog)
-
-        print("dedup:", len(ctx.implementations) + len(ctx.instances) + len(ctx.definitions))
 
         for inst_def in ctx.definitions:
             visit_inst_def(inst_def, ctx)
-
-        print("elim:", len(ctx.program))
 
         return ctx.program
 
