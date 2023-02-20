@@ -1,4 +1,4 @@
-from .version import *
+from .version import __version__
 from .orderedset import *
 from .ast import *
 from .parse import *
