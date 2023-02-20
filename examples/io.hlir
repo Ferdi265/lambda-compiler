@@ -32,7 +32,7 @@ puts = s -> std::map io::putc s;
 
 getc = x -> io::c2nat (lambda_io_getc x);
 
-gets = std::reverse (io::pop_eof (std::while
+gets = x -> std::reverse (io::pop_eof (std::while
     (l -> std::not (std::or (std::equal (std::first l) io::eof) (std::equal (std::first l) std::10)))
     (l -> std::prepend (io::getc std::ident) l)
     (std::prepend (io::getc std::ident) std::nil)
