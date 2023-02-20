@@ -160,12 +160,12 @@ class GenerateLLIRContext:
 
     def write_global(self, path: Path):
         if path not in self.global_cache:
-            self.llir += "@{path} = external global %lambda*, align {self.arch.ptr_align}\n"
+            self.llir += f"@{self.mangle_path(path)} = external global %lambda*, align {self.arch.ptr_align}\n"
             self.global_cache.add(path)
 
     def write_extern(self, name: str):
         if name not in self.extern_cache:
-            self.llir += "@{name} = external global %lambda*, align {self.arch.ptr_align}\n"
+            self.llir += f"@{name} = external global %lambda*, align {self.arch.ptr_align}\n"
             self.extern_cache.add(name)
 
     def write_instance_type(self, captures: int) -> InstanceType:
@@ -211,7 +211,7 @@ class GenerateLLIRContext:
         )
 
     def write_lambda_unref(self, lit: ValueLiteral):
-        self.llir += "    call void @lambda_unref(%lambda* {value}\n".format(
+        self.llir += "    call void @lambda_unref(%lambda* {value})\n".format(
             value = self.mangle_lit(lit)
         )
 
@@ -343,7 +343,7 @@ class GenerateLLIRContext:
         index_factory = IndexFactory()
         index_factory.next()
 
-        for inst_def in self.init_cache:
+        for inst_def in reversed(self.init_cache):
             index = index_factory.next()
             self.llir += "    {index} = load %lambda*, %lambda** @{inst_def_path}, align {ptr_align}\n".format(
                 index = self.mangle_lit(index),
@@ -397,14 +397,14 @@ def generate_llir(prog: List[Statement], crate: Path, arch: Architecture) -> str
             ctx.llir += "null"
             ctx.init_cache.append(inst_def)
         else:
-            ctx.llir += "@{ctx.mangle_inst(inst_def.inst)}"
+            ctx.llir += f"@{ctx.mangle_inst(inst_def.inst, alt=False)}"
 
-        ctx.llir += ", align {ctx.arch.ptr_align}\n"
+        ctx.llir += f", align {ctx.arch.ptr_align}\n"
 
     def visit_instance(inst: Instance, ctx: GenerateLLIRContext):
         inst_type = ctx.write_instance_type(len(inst.captures))
 
-        ctx.llir += "@{inst_path_alt} = private dso_local unnamed_addr global {inst_type} {{ %lambda_header {{ i{ptr_bits} 1, i{ptr_bits} {captures}, i{ptr_bits} 0, %lambda_fn* @{impl_path} }}, [ {captures} x %lambda* ] [ ".format(
+        ctx.llir += "@{inst_path_alt} = private dso_local unnamed_addr global {inst_type} {{ %lambda_header {{ i{ptr_bits} 1, i{ptr_bits} {captures}, i{ptr_bits} 0, %lambda_fn* @{impl_path} }}, [ {captures} x %lambda* ] [".format(
             ptr_bits = ctx.arch.ptr_size * 8,
             inst_type = inst_type,
             inst_path_alt = ctx.mangle_inst(inst, alt = True),
@@ -412,7 +412,7 @@ def generate_llir(prog: List[Statement], crate: Path, arch: Architecture) -> str
             captures = len(inst.captures),
         )
 
-        ctx.llir += ", ".join(f"%lambda* @{capture.path}" for capture in inst.captures)
+        ctx.llir += ",".join(f" %lambda* @{capture.path}" for capture in inst.captures)
 
         ctx.llir += f" ] }}, align {ctx.arch.ptr_align}\n"
 
@@ -431,7 +431,7 @@ def generate_llir(prog: List[Statement], crate: Path, arch: Architecture) -> str
         for path in uses.global_uses.keys():
             ctx.write_global(path)
 
-        ctx.llir += "define internal dso_local %lambda% @{impl_path}(%lambda* %0, %lambda* %1, %lambda_cont* %2) unnamed_addr {{\n".format(
+        ctx.llir += "define internal dso_local %lambda* @{impl_path}(%lambda* %0, %lambda* %1, %lambda_cont* %2) unnamed_addr {{\n".format(
             impl_path = ctx.mangle_impl(impl)
         )
 
@@ -489,8 +489,9 @@ def generate_llir(prog: List[Statement], crate: Path, arch: Architecture) -> str
                 arg = ctx.write_load_realized_literal(arg_r, index_factory)
                 next = ctx.write_load_realized_literal(next_r, index_factory)
 
+                cont = ctx.write_lambda_cont_alloc(index_factory, next)
                 ctx.write_lambda_unref(IndexFactory.SELF)
-                ret_lit = ctx.write_lambda_call(index_factory, fn, arg, next)
+                ret_lit = ctx.write_lambda_call(index_factory, fn, arg, cont)
 
         ctx.llir += f"    ret %lambda* {ctx.mangle_lit(ret_lit)}\n"
         ctx.llir += "}\n"
