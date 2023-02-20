@@ -1,0 +1,21 @@
+extern crate std;
+extern crate io;
+
+main = _ -> (std::do std::ident
+    (x -> io::puts (std::list_n std::6
+        (std::dec2 std::7 std::2)
+        (std::dec3 std::1 std::0 std::1)
+        (std::dec3 std::1 std::0 std::8)
+        (std::dec3 std::1 std::0 std::8)
+        (std::dec3 std::1 std::1 std::1)
+        (std::dec2 std::1 std::0)
+    ))
+    (x -> io::puts (std::list_n std::6
+        (std::dec2 std::8 std::7)
+        (std::dec3 std::1 std::1 std::1)
+        (std::dec3 std::1 std::1 std::4)
+        (std::dec3 std::1 std::0 std::8)
+        (std::dec3 std::1 std::0 std::0)
+        (std::dec2 std::1 std::0)
+    ))
+);
