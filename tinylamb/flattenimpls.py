@@ -82,6 +82,7 @@ class LambdaContext:
         else:
             arg_lit = AnonymousLiteral(continuation_id - 1)
 
+        assert self.ctx.current_assignment is not None
         return self.ctx.current_assignment, self.lambda_id, continuation_id, arg_lit, [], []
 
     def _append(self, impl: I) -> I:

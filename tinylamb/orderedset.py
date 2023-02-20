@@ -26,11 +26,8 @@ class OrderedSet(Generic[T]):
     def __iter__(self) -> Iterator[T]:
         return iter(self.data)
 
-    def __in__(self, key: Optional[T]) -> bool:
-        if key is not None:
-            return key in self.data
-        else:
-            return False
+    def __in__(self, key: T) -> bool:
+        return key in self.data
 
     def __and__(self, other: OrderedSet[T]) -> OrderedSet[T]:
         return OrderedSet(key for key in self if key in other)

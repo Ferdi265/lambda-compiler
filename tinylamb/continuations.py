@@ -137,7 +137,7 @@ def compute_continuations(prog: List[Statement]) -> List[Statement]:
             visit_literal(cur.arg, cur)
 
             if cur.id == 0:
-                if arg in cur.ident_captures:
+                if arg is not None and arg in cur.ident_captures:
                     cur.ident_captures.remove(arg)
             else:
                 if cur.id - 1 in cur.anonymous_captures:
