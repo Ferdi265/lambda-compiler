@@ -44,6 +44,18 @@ class IndexFactory:
         return AnonymousLiteral(id)
 
 @dataclass
+class RealizedLiteral:
+    pass
+
+@dataclass
+class SimpleLiteral(RealizedLiteral):
+    lit: ValueLiteral
+
+@dataclass
+class ImplConstruction(RealizedLiteral):
+    lit: ValueLiteral
+
+@dataclass
 class ValueUses:
     capture_uses: DefaultDict[int, int] = field(default_factory = lambda: defaultdict(int))
     extern_uses: DefaultDict[str, int] = field(default_factory = lambda: defaultdict(int))
@@ -103,6 +115,16 @@ class GenerateLLIRContext:
     global_cache: OrderedSet[Path] = field(default_factory = OrderedSet)
     init_cache: List[InstanceDefinition] = field(default_factory = list)
 
+    def mangle_crate_init(self, crate: Path) -> str:
+        assert len(crate.components) == 1
+        crate_name = crate.components[0]
+        return f"_L{len(crate_name)}I{crate_name}"
+
+    def mangle_crate_fini(self, crate: Path) -> str:
+        assert len(crate.components) == 1
+        crate_name = crate.components[0]
+        return f"_L{len(crate_name)}F{crate_name}"
+
     def mangle_path(self, path: Path) -> str:
         return "_L" + "".join(f"{len(name)}N{name}" for name in path.components)
 
@@ -117,7 +139,13 @@ class GenerateLLIRContext:
         return f"{self.mangle_path(impl.path)}L{impl.lambda_id}I{impl.continuation_id}"
 
     def mangle_lit(self, lit: ValueLiteral) -> str:
-        pass
+        match lit:
+            case AnonymousLiteral(id):
+                return f"%{id}"
+            case InstanceLiteral(inst):
+                return f"@{self.mangle_inst(inst, alt=False)}"
+            case _:
+                raise GenerateLLIRError(f"unexpected literal type: {lit}")
 
     def declare_global(self, path: Path):
         self.global_cache.add(path)
@@ -149,6 +177,32 @@ class GenerateLLIRContext:
 
         return inst_type
 
+    def write_load_realized_literal(self, lit: RealizedLiteral, index_factory: IndexFactory) -> ValueLiteral:
+        match lit:
+            case SimpleLiteral(simple_lit):
+                return self.write_load_literal(simple_lit, index_factory)
+            case ImplConstruction(lamb):
+                return lamb
+            case _:
+                raise GenerateLLIRError(f"unexpected literal type: {lit}")
+
+    def write_load_literal(self, lit: ValueLiteral, index_factory: IndexFactory) -> ValueLiteral:
+        match lit:
+            case AnonymousLiteral(id):
+                if id == 0:
+                    return IndexFactory.ARG
+                else:
+                    return self.write_load_capture(index_factory, id - 1)
+            case IdentLiteral(ExternGlobal(name)):
+                return self.write_load_extern(index_factory, name)
+            case PathLiteral(PathGlobal(path)):
+                return self.write_load_global(index_factory, path)
+            case InstanceLiteral(inst):
+                return lit
+            case _:
+                raise GenerateLLIRError(f"unexpected literal type: {lit}")
+
+
     def write_lambda_ref(self, lit: ValueLiteral, refcount: int):
         self.llir += "    call void @lambda_ref(%lambda* {value}, i{ptr_bits} {refcount})\n".format(
             value = self.mangle_lit(lit),
@@ -162,34 +216,148 @@ class GenerateLLIRContext:
         )
 
     def write_lambda_alloc(self, index_factory: IndexFactory, len_captures: int) -> ValueLiteral:
-        pass
+        index = index_factory.next()
+        self.llir += "    {index} = call %lambda* @lambda_alloc(i{ptr_bits} {len_captures}, i{ptr_bits} 0)\n".format(
+            index = self.mangle_lit(index),
+            len_captures = len_captures,
+            ptr_bits = self.arch.ptr_size * 8
+        )
+        return index
 
     def write_lambda_cont_alloc(self, index_factory: IndexFactory, next: ValueLiteral) -> ValueLiteral:
-        pass
+        index = index_factory.next()
+        self.llir += "    {index} = call %lambda_cont* @lambda_cont_alloc(%lambda_cont* {cont}, %lambda* {next})\n".format(
+            index = self.mangle_lit(index),
+            cont = self.mangle_lit(IndexFactory.CONT),
+            next = self.mangle_lit(next)
+        )
+        return index
 
     def write_lambda_call(self, index_factory: IndexFactory, fn: ValueLiteral, arg: ValueLiteral, next: ValueLiteral) -> ValueLiteral:
-        pass
+        index = index_factory.next()
+        self.llir += "    {index} = tail call %lambda* @lambda_call(%lambda* {fn}, %lambda* {arg}, %lambda_cont* {next})\n".format(
+            index = self.mangle_lit(index),
+            fn = self.mangle_lit(fn),
+            arg = self.mangle_lit(arg),
+            next = self.mangle_lit(next)
+        )
+        return index
 
     def write_lambda_cont_call(self, index_factory: IndexFactory, value: ValueLiteral) -> ValueLiteral:
-        pass
+        index = index_factory.next()
+        self.llir += "    {index} = tail call %lambda* @lambda_cont_call(%lambda* {value}, %lambda_cont* {cont})\n".format(
+            index = self.mangle_lit(index),
+            value = self.mangle_lit(value),
+            cont = self.mangle_lit(IndexFactory.CONT)
+        )
+        return index
 
     def write_capture_ptr(self, index_factory: IndexFactory, lamb: ValueLiteral, capture_index: int) -> ValueLiteral:
-        pass
+        index = index_factory.next()
+        self.llir += "    {index} = getelementptr inbounds %lambda, %lambda* {lamb}, i{ptr_bits} 0, i32 1, i{ptr_bits} {capture_index}\n".format(
+            index = self.mangle_lit(index),
+            lamb = self.mangle_lit(lamb),
+            capture_index = capture_index,
+            ptr_bits = self.arch.ptr_size * 8
+        )
+        return index
 
     def write_load_capture(self, index_factory: IndexFactory, capture_index: int) -> ValueLiteral:
-        pass
+        ptr_index = self.write_capture_ptr(index_factory, IndexFactory.SELF, capture_index)
+        index = index_factory.next()
+        self.llir += "    {index} = load %lambda*, %lambda** {ptr_index}, align {ptr_align}\n".format(
+            index = self.mangle_lit(index),
+            ptr_index = self.mangle_lit(ptr_index),
+            ptr_align = self.arch.ptr_align
+        )
+        return index
 
     def write_store_capture(self, index_factory: IndexFactory, value: ValueLiteral, lamb: ValueLiteral, capture_index: int):
-        pass
+        ptr_index = self.write_capture_ptr(index_factory, lamb, capture_index)
+        self.llir += "    store %lambda* {value}, %lambda** {ptr_index}, align {ptr_align}\n".format(
+            value = self.mangle_lit(value),
+            ptr_index = self.mangle_lit(ptr_index),
+            ptr_align = self.arch.ptr_align
+        )
+
+    def write_store_impl(self, index_factory: IndexFactory, impl: Implementation, lamb: ValueLiteral):
+        ptr_index = index_factory.next()
+        self.llir += "    {ptr_index} = getelementptr inbounds %lambda, %lambda* {lamb}, i{ptr_bits} 0, i32 0, i32 3\n".format(
+            lamb = self.mangle_lit(lamb),
+            ptr_index = self.mangle_lit(ptr_index),
+            ptr_bits = self.arch.ptr_size * 8
+        )
+        self.llir += "    store %lambda_fn* @{impl_path}, %lambda_fn** {ptr_index}, align {ptr_align}\n".format(
+            impl_path = self.mangle_impl(impl),
+            ptr_index = self.mangle_lit(ptr_index),
+            ptr_align = self.arch.ptr_align
+        )
 
     def write_load_extern(self, index_factory: IndexFactory, name: str) -> ValueLiteral:
-        pass
+        index = index_factory.next()
+        self.llir += "    {index} = load %lambda*, %lambda** @{name}, align {ptr_align}\n".format(
+            index = self.mangle_lit(index),
+            name = name,
+            ptr_align = self.arch.ptr_align
+        )
+        return index
 
     def write_load_global(self, index_factory: IndexFactory, path: Path) -> ValueLiteral:
-        pass
+        index = index_factory.next()
+        self.llir += "    {index} = load %lambda*, %lambda** @{path}, align {ptr_align}\n".format(
+            index = self.mangle_lit(index),
+            path = self.mangle_path(path),
+            ptr_align = self.arch.ptr_align
+        )
+        return index
 
     def write_crate_init_fini(self, crate: Path):
-        pass
+        self.llir += "define external dso_local void @{crate_init}() unnamed_addr {{\n".format(
+            crate_init = self.mangle_crate_init(crate)
+        )
+
+        index_factory = IndexFactory()
+        index_factory.next()
+
+        for inst_def in self.init_cache:
+            index = index_factory.next()
+            self.write_lambda_ref(InstanceLiteral(inst_def.inst), 1)
+            self.llir += "    {index} = call %lambda* @lambda_null_call(%lambda* @{inst_path})\n".format(
+                index = self.mangle_lit(index),
+                inst_path = self.mangle_inst(inst_def.inst, alt = False)
+            )
+            self.llir += "    store %lambda* {index}, %lambda** @{inst_def_path}, align {ptr_align}\n".format(
+                index = self.mangle_lit(index),
+                inst_def_path = self.mangle_def(inst_def),
+                ptr_align = self.arch.ptr_align
+            )
+
+        self.llir += "    ret void\n"
+        self.llir += "}\n"
+        self.llir += "\n"
+
+        self.llir += "define external dso_local void @{crate_fini}() unnamed_addr {{\n".format(
+            crate_fini = self.mangle_crate_fini(crate)
+        )
+
+        index_factory = IndexFactory()
+        index_factory.next()
+
+        for inst_def in self.init_cache:
+            index = index_factory.next()
+            self.llir += "    {index} = load %lambda*, %lambda** @{inst_def_path}, align {ptr_align}\n".format(
+                index = self.mangle_lit(index),
+                inst_def_path = self.mangle_def(inst_def),
+                ptr_align = self.arch.ptr_align
+            )
+            self.llir += "    call void @lambda_unref(%lambda* {index})\n".format(
+                index = self.mangle_lit(index)
+            )
+
+        self.llir += "    ret void\n"
+        self.llir += "}\n"
+        self.llir += "\n"
+
 
 def generate_llir(prog: List[Statement], crate: Path, arch: Architecture) -> str:
     def visit_program(prog: List[Statement]) -> str:
@@ -300,13 +468,46 @@ def generate_llir(prog: List[Statement], crate: Path, arch: Architecture) -> str
         ret_lit: ValueLiteral
         match impl:
             case ReturnImplementation() as impl:
-                pass
+                value_r = visit_literal(impl.value, index_factory, ctx)
+                value = ctx.write_load_realized_literal(value_r, index_factory)
+
+                ctx.write_lambda_unref(IndexFactory.SELF)
+                ret_lit = ctx.write_lambda_cont_call(index_factory, value)
             case TailCallImplementation() as impl:
-                pass
+                fn_r = visit_literal(impl.fn, index_factory, ctx)
+                arg_r = visit_literal(impl.arg, index_factory, ctx)
+                fn = ctx.write_load_realized_literal(fn_r, index_factory)
+                arg = ctx.write_load_realized_literal(arg_r, index_factory)
+
+                ctx.write_lambda_unref(IndexFactory.SELF)
+                ret_lit = ctx.write_lambda_call(index_factory, fn, arg, IndexFactory.CONT)
             case ContinueCallImplementation() as impl:
-                pass
+                fn_r = visit_literal(impl.fn, index_factory, ctx)
+                arg_r = visit_literal(impl.arg, index_factory, ctx)
+                next_r = visit_literal(impl.next, index_factory, ctx)
+                fn = ctx.write_load_realized_literal(fn_r, index_factory)
+                arg = ctx.write_load_realized_literal(arg_r, index_factory)
+                next = ctx.write_load_realized_literal(next_r, index_factory)
+
+                ctx.write_lambda_unref(IndexFactory.SELF)
+                ret_lit = ctx.write_lambda_call(index_factory, fn, arg, next)
 
         ctx.llir += f"    ret %lambda* {ctx.mangle_lit(ret_lit)}\n"
         ctx.llir += "}\n"
+
+    def visit_literal(lit: ValueLiteral, index_factory: IndexFactory, ctx: GenerateLLIRContext) -> RealizedLiteral:
+        match lit:
+            case ImplementationLiteral(impl):
+                lamb = ctx.write_lambda_alloc(index_factory, len(impl.anonymous_captures))
+                ctx.write_store_impl(index_factory, impl, lamb)
+
+                for dest_index, id in enumerate(impl.anonymous_captures):
+                    value = ctx.write_load_literal(AnonymousLiteral(id), index_factory)
+
+                    ctx.write_store_capture(index_factory, value, lamb, dest_index)
+
+                return ImplConstruction(lamb)
+
+        return SimpleLiteral(lit)
 
     return visit_program(prog)
