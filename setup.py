@@ -15,7 +15,7 @@ setup(
     packages = ["tinylamb", "tinylamb.cli"],
     entry_points = {
         "console_scripts": [
-            "hlir2mlir=tinylamb.cli.hlir2mlir:main"
+            "lambda-hlir2mlir=tinylamb.cli.hlir2mlir:main"
         ]
     },
     package_data = {

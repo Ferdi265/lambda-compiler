@@ -4,6 +4,7 @@ from .rechain import *
 from .continuations import *
 from .flattenimpls import *
 from .instantiate import *
+import sys
 
 class PrettyError(Exception):
     pass
@@ -158,50 +159,50 @@ def pretty(prog: List[Statement]):
 
     visit_program(prog)
 
-def pretty_hlir(prog: List[Statement]):
+def pretty_hlir(prog: List[Statement], file: TextIO = sys.stdout):
     def visit_program(prog: List[Statement]) -> List[Statement]:
         return [visit_statement(stmt) for stmt in prog]
 
     def visit_statement(stmt: Statement):
         match stmt:
             case ExternCrate(crate):
-                print(f"extern crate {crate};")
+                print(f"extern crate {crate};", file=file)
             case Extern(name):
-                print(f"extern {name};")
+                print(f"extern {name};", file=file)
             case NameAssignment(name, value):
-                print(f"{name} = ", end="")
+                print(f"{name} = ", end="", file=file)
                 visit_expr(value)
-                print(";")
+                print(";", file=file)
             case PathAssignment(path, value):
-                print(f"{path} = ", end="")
+                print(f"{path} = ", end="", file=file)
                 visit_expr(value)
-                print(";")
+                print(";", file=file)
             case _:
                 raise PrettyError(f"unexpected AST node encountered: {stmt}")
 
     def visit_expr(expr: Expr):
         match expr:
             case Paren(inner):
-                print("(", end="")
+                print("(", end="", file=file)
                 visit_expr(inner)
-                print(")", end="")
+                print(")", end="", file=file)
             case Call(fn, arg):
                 visit_expr(fn)
-                print(" ", end="")
+                print(" ", end="", file=file)
                 visit_expr(arg)
             case Lambda(name, body, captures):
-                print(f"{name} -> ", end="")
+                print(f"{name} -> ", end="", file=file)
                 visit_expr(body)
             case Ident(name):
-                print(f"{name}", end="")
+                print(f"{name}", end="", file=file)
             case PathExpr(path):
-                print(f"{path}", end="")
+                print(f"{path}", end="", file=file)
             case _:
                 raise PrettyError(f"unexpected AST node encountered: {expr}")
 
     visit_program(prog)
 
-def pretty_mlir(prog: List[Statement]):
+def pretty_mlir(prog: List[Statement], file: TextIO = sys.stdout):
     def visit_program(prog: List[Statement]) -> List[Statement]:
         return [visit_statement(stmt) for stmt in prog]
 
@@ -220,27 +221,27 @@ def pretty_mlir(prog: List[Statement]):
         assert impl.arg_literal is None or impl.arg_literal == AnonymousLiteral(0)
         assert len(impl.ident_captures) == 0
 
-        print(f"impl {impl.path}!{impl.lambda_id}!{impl.continuation_id} = ", end="")
+        print(f"impl {impl.path}!{impl.lambda_id}!{impl.continuation_id} = ", end="", file=file)
 
         match impl:
             case ReturnImplementation() as impl:
-                print(f"{visit_literal(impl.value)};")
+                print(f"{visit_literal(impl.value)};", file=file)
             case TailCallImplementation() as impl:
-                print(f"{visit_literal(impl.fn)} {visit_literal(impl.arg)};")
+                print(f"{visit_literal(impl.fn)} {visit_literal(impl.arg)};", file=file)
             case ContinueCallImplementation() as impl:
-                print(f"{visit_literal(impl.fn)} {visit_literal(impl.arg)} -> {visit_literal(impl.next)};")
+                print(f"{visit_literal(impl.fn)} {visit_literal(impl.arg)} -> {visit_literal(impl.next)};", file=file)
             case _:
                 raise PrettyError(f"unexpected AST node encountered: {impl}")
 
     def visit_instance(inst: Instance):
         impl = inst.impl
         captures = " ".join(f"{i.path}%{i.inst_id}" for i in inst.captures)
-        print(f"inst {inst.path}%{inst.inst_id} = {impl.path}!{impl.lambda_id}!{impl.continuation_id}[{captures}];")
+        print(f"inst {inst.path}%{inst.inst_id} = {impl.path}!{impl.lambda_id}!{impl.continuation_id}[{captures}];", file=file)
 
     def visit_instance_definition(inst_def: InstanceDefinition):
         inst = inst_def.inst
         init_tag = " $$" if inst_def.needs_init else ""
-        print(f"pub {inst_def.path} = {inst.path}%{inst.inst_id}{init_tag};")
+        print(f"pub {inst_def.path} = {inst.path}%{inst.inst_id}{init_tag};", file=file)
 
     def visit_literal(lit: ValueLiteral) -> str:
         match lit:

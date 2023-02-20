@@ -31,7 +31,7 @@ class Context:
     def __copy__(self) -> Context:
         return Context(copy(self.locals), copy(self.globals), copy(self.externs), copy(self.extern_crates), OrderedSet())
 
-def resolve(prog: List[Statement], crate: Path, externs: Optional[OrderedSet[str]]) -> List[Statement]:
+def resolve(prog: List[Statement], crate: Path, externs: Optional[OrderedSet[str]] = None) -> List[Statement]:
     """resolve idents into locals and globals and populate lambda captures"""
 
     def visit_program(prog: List[Statement], ctx: Context) -> List[Statement]:
