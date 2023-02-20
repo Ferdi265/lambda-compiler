@@ -21,11 +21,22 @@ class Path:
     def __str__(self) -> str:
         return "::".join(self.components)
 
+    def __lt__(self, other: Path) -> bool:
+        return tuple(self.components) < tuple(other.components)
+
     def __truediv__(self, other: Union[Path, str]) -> Path:
         if isinstance(other, Path):
             return Path(tuple(self.components) + tuple(other.components))
         else:
             return Path(tuple(self.components) + (other,))
+
+@dataclass
+class ExternCrate(Statement):
+    name: str
+
+@dataclass
+class Extern(Statement):
+    name: str
 
 @dataclass
 class Assignment(Statement):

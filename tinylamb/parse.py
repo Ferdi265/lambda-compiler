@@ -14,7 +14,9 @@ class Token(Enum):
     End = auto(),
     PathSep = auto()
     Use = auto()
-    As = auto()
+    As = auto(),
+    Extern = auto(),
+    Crate = auto()
 
 patterns: List[Tuple[str, Optional[Token]]] = [
     ("( |\n)+", None),
@@ -26,6 +28,8 @@ patterns: List[Tuple[str, Optional[Token]]] = [
     ("::", Token.PathSep),
     ("use", Token.Use),
     ("as", Token.As),
+    ("extern", Token.Extern),
+    ("crate", Token.Crate),
     ("[a-zA-Z_0-9]*", Token.Ident),
 ]
 
@@ -139,9 +143,28 @@ def parse(s: str) -> List[Statement]:
         eat(Token.SemiColon)
         return Import(path, name)
 
+    def parse_extern() -> Statement:
+        eat(Token.Extern)
+
+        stmt: Statement
+        if cur == Token.Crate:
+            eat()
+            name = eat(Token.Ident)
+            stmt = ExternCrate(name)
+        elif cur == Token.Ident:
+            name = eat()
+            stmt = Extern(name)
+        else:
+            err()
+
+        eat(Token.SemiColon)
+        return stmt
+
     def parse_statement() -> Statement:
         if cur == Token.Use:
             return parse_import()
+        elif cur == Token.Extern:
+            return parse_extern()
         else:
             return parse_assignment()
 
@@ -154,3 +177,40 @@ def parse(s: str) -> List[Statement]:
         return statements
 
     return parse_prog()
+
+def parse_path(s: str) -> Path:
+    tokens = tokenize(s)
+    cur, curs, line, col = Token.End, "", 1, 1
+
+    def drop():
+        nonlocal cur, curs, line, col
+        try:
+            cur, curs, line, col = next(tokens)
+        except StopIteration:
+            cur, curs = Token.End, ""
+
+    drop()
+
+    def eat(t: Optional[Token] = None) -> str:
+        if t is not None and cur != t:
+            err()
+        cs = curs
+        drop()
+        return cs
+
+    def err() -> NoReturn:
+        raise ParseError(f"parse error at line {line} col {col}: ({cur}, '{curs}')")
+
+    def parse_path(crate: str) -> Path:
+        components = [crate]
+        while cur == Token.PathSep:
+            eat()
+            components.append(eat(Token.Ident))
+
+        return Path(components)
+
+    name = eat(Token.Ident)
+    path = parse_path(name)
+    eat(Token.End)
+
+    return path

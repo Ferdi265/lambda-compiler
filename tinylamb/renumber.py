@@ -52,7 +52,9 @@ def renumber_captures(prog: List[Statement]) -> List[Statement]:
             match lit:
                 case IdentLiteral(Local(ident)):
                     return AnonymousLiteral(ident_capture_mapping[ident])
-                case IdentLiteral(Global(ident)):
+                case IdentLiteral(ExternGlobal(ident)):
+                    return lit
+                case PathLiteral(PathGlobal(path)):
                     return lit
                 case AnonymousLiteral(id):
                     return AnonymousLiteral(anonymous_capture_mapping[id])
@@ -77,7 +79,7 @@ def renumber_captures(prog: List[Statement]) -> List[Statement]:
                         assert a_id == b, f"mismatch: {a} ({a_id}) != {b}"
 
                     new_impl_ref = Implementation(
-                        impl_ref.name,
+                        impl_ref.path,
                         impl_ref.lambda_id,
                         impl_ref.continuation_id,
                         None,

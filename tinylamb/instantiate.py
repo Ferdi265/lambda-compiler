@@ -6,14 +6,14 @@ from .renumber import *
 
 @dataclass
 class Instance(Statement):
-    name: str
+    path: Path
     inst_id: int
     impl: Implementation
     captures: List[Instance]
 
 @dataclass
 class InstanceDefinition(Statement):
-    name: str
+    path: Path
     inst: Instance
 
 @dataclass
@@ -25,39 +25,39 @@ class InstantiateError(Exception):
 
 @dataclass
 class InstantiateContext:
-    impl_table: Dict[Tuple[str, int, int], Implementation] = field(default_factory = dict)
-    inst_table: Dict[Tuple[str, int], Instance] = field(default_factory = dict)
-    def_table: Dict[str, InstanceDefinition] = field(default_factory = dict)
+    impl_table: Dict[Tuple[Path, int, int], Implementation] = field(default_factory = dict)
+    inst_table: Dict[Tuple[Path, int], Instance] = field(default_factory = dict)
+    def_table: Dict[Path, InstanceDefinition] = field(default_factory = dict)
 
-    impl_inst_table: Dict[Tuple[str, int, int], Instance] = field(default_factory = dict)
-    inst_id_table: Dict[str, int] = field(default_factory = dict)
+    impl_inst_table: Dict[Tuple[Path, int, int], Instance] = field(default_factory = dict)
+    inst_id_table: Dict[Path, int] = field(default_factory = dict)
 
     instances: List[Instance] = field(default_factory = list)
     definitions: List[InstanceDefinition] = field(default_factory = list)
 
     def resolve_impl(self, impl: Implementation) -> Implementation:
-        return self.impl_table[(impl.name, impl.lambda_id, impl.continuation_id)]
+        return self.impl_table[(impl.path, impl.lambda_id, impl.continuation_id)]
 
     def resolve_inst(self, inst: Instance) -> Instance:
-        return self.inst_table[(inst.name, inst.inst_id)]
+        return self.inst_table[(inst.path, inst.inst_id)]
 
-    def resolve_global(self, name: str) -> Instance:
-        return self.def_table[name].inst
+    def resolve_path_global(self, path: Path) -> Instance:
+        return self.def_table[path].inst
 
-    def next_inst_id(self, name: str) -> int:
-        if name not in self.inst_id_table:
-            self.inst_id_table[name] = 0
+    def next_inst_id(self, path: Path) -> int:
+        if path not in self.inst_id_table:
+            self.inst_id_table[path] = 0
 
-        id = self.inst_id_table[name]
-        self.inst_id_table[name] += 1
+        id = self.inst_id_table[path]
+        self.inst_id_table[path] += 1
         return id
 
     def instantiate(self, impl: Implementation, captures: List[Instance]) -> Instance:
         captures = [captures[i] for i in impl.anonymous_captures]
 
-        inst: Instance = Instance(impl.name, self.next_inst_id(impl.name), impl, captures)
-        self.inst_table[(inst.name, inst.inst_id)] = inst
-        self.impl_inst_table[(impl.name, impl.lambda_id, impl.continuation_id)] = inst
+        inst: Instance = Instance(impl.path, self.next_inst_id(impl.path), impl, captures)
+        self.inst_table[(inst.path, inst.inst_id)] = inst
+        self.impl_inst_table[(impl.path, impl.lambda_id, impl.continuation_id)] = inst
         self.instances.append(inst)
         return inst
 
@@ -65,9 +65,9 @@ class InstantiateContext:
         assert len(impl.anonymous_captures) == 0
 
         inst = self.evaluate_impl(impl, [])
-        inst_def = InstanceDefinition(impl.name, inst)
+        inst_def = InstanceDefinition(impl.path, inst)
         self.definitions.append(inst_def)
-        self.def_table[impl.name] = inst_def
+        self.def_table[impl.path] = inst_def
 
     def evaluate_inst(self, inst: Instance, arg: Instance) -> Instance:
         return self.evaluate_impl(inst.impl, [arg] + inst.captures)
@@ -92,8 +92,8 @@ class InstantiateContext:
 
     def evaluate_literal(self, lit: ValueLiteral, captures: List[Instance]) -> Instance:
         match lit:
-            case IdentLiteral(Global(ident)):
-                return self.resolve_global(ident)
+            case PathLiteral(PathGlobal(path)):
+                return self.resolve_path_global(path)
             case AnonymousLiteral(id):
                 return captures[id]
             case InstanceLiteral(inst):
@@ -123,7 +123,7 @@ def instantiate_implementations(prog: List[Statement]) -> List[Statement]:
                 raise InstantiateError(f"unexpected AST node encountered: {stmt}")
 
     def visit_implementation_find_impls(impl: Implementation, ctx: InstantiateContext):
-        ctx.impl_table[(impl.name, impl.lambda_id, impl.continuation_id)] = impl
+        ctx.impl_table[(impl.path, impl.lambda_id, impl.continuation_id)] = impl
 
     def visit_statement_instantiate(stmt: Statement, ctx: InstantiateContext):
         match stmt:
@@ -154,9 +154,9 @@ def instantiate_implementations(prog: List[Statement]) -> List[Statement]:
 
     def visit_literal(lit: ValueLiteral, ctx: InstantiateContext) -> ValueLiteral:
         match lit:
-            case IdentLiteral(Global(ident)):
-                if ident in ctx.def_table:
-                    return InstanceLiteral(ctx.def_table[ident].inst)
+            case PathLiteral(PathGlobal(path)):
+                if path in ctx.def_table:
+                    return InstanceLiteral(ctx.def_table[path].inst)
             case ImplementationLiteral(impl):
                 impl = ctx.resolve_impl(impl)
                 if len(impl.anonymous_captures) == 0:

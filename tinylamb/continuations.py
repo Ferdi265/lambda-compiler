@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from copy import copy
 
 from .ast import *
-from .resolve import Local, Global
+from .resolve import Local, ExternGlobal, PathGlobal
 from .rechain import CallStart, CallChain
 
 @dataclass
@@ -14,6 +14,10 @@ class ValueLiteral:
 @dataclass
 class IdentLiteral(ValueLiteral):
     ident: Ident
+
+@dataclass
+class PathLiteral(ValueLiteral):
+    path: PathExpr
 
 @dataclass
 class AnonymousLiteral(ValueLiteral):
@@ -32,8 +36,8 @@ class Continuation:
     anonymous_captures: OrderedSet[int] = field(default_factory = OrderedSet)
 
 @dataclass
-class CAssignment(Statement):
-    name: str
+class ContinuationAssignment(Assignment):
+    path: Path
     value: ContinuationChain
 
 @dataclass
@@ -68,16 +72,16 @@ def compute_continuations(prog: List[Statement]) -> List[Statement]:
 
     def visit_statement(stmt: Statement) -> Statement:
         match stmt:
-            case Assignment() as ass:
+            case PathAssignment() as ass:
                 return visit_assignment(ass)
             case _:
                 raise ComputeContinuationsError(f"unexpected AST node encountered: {stmt}")
 
-    def visit_assignment(ass: Assignment) -> CAssignment:
+    def visit_assignment(ass: PathAssignment) -> ContinuationAssignment:
         chain = make_continuation_chain(ass.value)
         visit_continuation_chain(chain, None)
 
-        return CAssignment(ass.name, chain)
+        return ContinuationAssignment(ass.path, chain)
 
     def make_continuation_chain(expr: Expr) -> ContinuationChain:
         ctx = ComputeContinuationsContext()
@@ -93,6 +97,8 @@ def compute_continuations(prog: List[Statement]) -> List[Statement]:
                 return LambdaLiteral(clamb)
             case Ident() as ident:
                 return IdentLiteral(ident)
+            case PathExpr() as path_expr:
+                return PathLiteral(path_expr)
             case _:
                 raise ComputeContinuationsError(f"unexpected AST node encountered: {expr}")
 

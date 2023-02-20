@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from copy import copy
 
 from .ast import *
-from .resolve import Local, Global
+from .resolve import Local, ExternGlobal, PathGlobal
 from .continuations import *
 
 @dataclass
@@ -13,7 +13,7 @@ class ImplementationLiteral(ValueLiteral):
 
 @dataclass
 class Implementation(Statement):
-    name: str
+    path: Path
     lambda_id: int
     continuation_id: int
     arg_literal: Optional[ValueLiteral]
@@ -40,7 +40,7 @@ class FlattenImplsError(Exception):
 
 @dataclass
 class FlattenImplsContext:
-    current_assignment: str = field(default_factory = str)
+    current_assignment: Optional[Path] = None
     current_lambda_id: int = field(default_factory = int)
     implementations: List[Implementation] = field(default_factory = list)
 
@@ -50,6 +50,7 @@ class FlattenImplsContext:
         return LambdaContext(self, arg_name, id)
 
     def implementation_literal(self, lambda_id: int, continuation_id: int, arg_name: Optional[ValueLiteral], ident_captures: List[str], anonymous_captures: List[int]) -> ImplementationLiteral:
+        assert self.current_assignment is not None
         return ImplementationLiteral(Implementation(
             self.current_assignment, lambda_id, continuation_id,
             arg_name, ident_captures, anonymous_captures
@@ -69,7 +70,7 @@ class LambdaContext:
         self.current_continuation_id += 1
         return id
 
-    def _impl_metadata(self) -> Tuple[str, int, int, Optional[ValueLiteral], List[str], List[int]]:
+    def _impl_metadata(self) -> Tuple[Path, int, int, Optional[ValueLiteral], List[str], List[int]]:
         continuation_id = self.next_continuation_id()
 
         arg_lit: Optional[ValueLiteral]
@@ -107,13 +108,13 @@ def flatten_implementations(prog: List[Statement]) -> List[Statement]:
 
     def visit_statement(stmt: Statement, ctx: FlattenImplsContext):
         match stmt:
-            case CAssignment() as ass:
+            case ContinuationAssignment() as ass:
                 visit_assignment(ass, ctx)
             case _:
                 raise FlattenImplsError(f"unexpected AST node encountered: {stmt}")
 
-    def visit_assignment(ass: CAssignment, ctx: FlattenImplsContext):
-        ctx.current_assignment = ass.name
+    def visit_assignment(ass: ContinuationAssignment, ctx: FlattenImplsContext):
+        ctx.current_assignment = ass.path
         ctx.current_lambda_id = 0
         visit_continuation_chain(ass.value, ctx, OrderedSet(), None)
 

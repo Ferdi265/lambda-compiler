@@ -16,7 +16,11 @@ def pretty(prog: List[Statement]):
 
     def visit_statement(stmt: Statement, depth: int):
         match stmt:
-            case CAssignment(name, value):
+            case ExternCrate(crate):
+                print(f"{indent(depth)}ExternCrate({crate})")
+            case Extern(name):
+                print(f"{indent(depth)}Extern({name})")
+            case ContinuationAssignment(name, value):
                 print(f"{indent(depth)}CAssignment")
                 print(f"{indent(depth)}- name: {name!r}")
                 print(f"{indent(depth)}- value:")
@@ -63,25 +67,33 @@ def pretty(prog: List[Statement]):
                 visit_expr(body, depth + 1)
             case Local(name):
                 print(f"{indent(depth)}Local({name!r})")
-            case Global(name):
-                print(f"{indent(depth)}Global({name!r})")
+            case ExternGlobal(name):
+                print(f"{indent(depth)}ExternGlobal({name!r})")
             case Ident(name):
                 print(f"{indent(depth)}Ident({name!r})")
+            case PathGlobal(path):
+                print(f"{indent(depth)}PathGlobal({path})")
+            case PathExpr(path):
+                print(f"{indent(depth)}PathExpr({path})")
 
     def visit_literal(lit: ValueLiteral, depth: int):
         match lit:
             case IdentLiteral(Local(name)):
                 print(f"{indent(depth)}Local({name!r})")
-            case IdentLiteral(Global(name)):
-                print(f"{indent(depth)}Global({name!r})")
+            case IdentLiteral(ExternGlobal(name)):
+                print(f"{indent(depth)}ExternGlobal({name!r})")
             case IdentLiteral(Ident(name)):
                 print(f"{indent(depth)}Ident({name!r})")
+            case PathLiteral(PathGlobal(path)):
+                print(f"{indent(depth)}PathGlobal({path})")
+            case PathLiteral(PathExpr(path)):
+                print(f"{indent(depth)}PathExpr({path})")
             case AnonymousLiteral(id):
                 print(f"{indent(depth)}Anonymous({id})")
             case LambdaLiteral(lamb):
                 visit_expr(lamb, depth)
             case ImplementationLiteral(impl):
-                print(f"{indent(depth)}Implementation({impl.name!r}, {impl.lambda_id}, {impl.continuation_id})")
+                print(f"{indent(depth)}Implementation({impl.path}, {impl.lambda_id}, {impl.continuation_id})")
                 if len(impl.ident_captures) != 0:
                     print(f"{indent(depth)}- ident_captures: {impl.ident_captures}")
                 if len(impl.anonymous_captures) != 0:
@@ -118,7 +130,7 @@ def pretty(prog: List[Statement]):
         visit_literal(chain.result_literal, depth + 1)
 
     def visit_implementation(impl: Implementation, depth: int):
-        print(f"{indent(depth)}{type(impl).__name__}({impl.name!r}, {impl.lambda_id}, {impl.continuation_id})")
+        print(f"{indent(depth)}{type(impl).__name__}({impl.path}, {impl.lambda_id}, {impl.continuation_id})")
         if impl.arg_literal is not None:
             print(f"{indent(depth)}- arg_literal:")
             visit_literal(impl.arg_literal, depth + 1)
@@ -146,12 +158,7 @@ def pretty(prog: List[Statement]):
 
     visit_program(prog)
 
-def pretty_mlir(prog: List[Statement], crate: Optional[str] = None):
-    if crate is None:
-        crate_prefix = ""
-    else:
-        crate_prefix = f"{crate}::"
-
+def pretty_mlir(prog: List[Statement]):
     def visit_program(prog: List[Statement]) -> List[Statement]:
         return [visit_statement(stmt) for stmt in prog]
 
@@ -170,7 +177,7 @@ def pretty_mlir(prog: List[Statement], crate: Optional[str] = None):
         assert impl.arg_literal is None or impl.arg_literal == AnonymousLiteral(0)
         assert len(impl.ident_captures) == 0
 
-        print(f"impl {crate_prefix}{impl.name}!{impl.lambda_id}!{impl.continuation_id} = ", end="")
+        print(f"impl {impl.path}!{impl.lambda_id}!{impl.continuation_id} = ", end="")
 
         match impl:
             case ReturnImplementation() as impl:
@@ -184,24 +191,26 @@ def pretty_mlir(prog: List[Statement], crate: Optional[str] = None):
 
     def visit_instance(inst: Instance):
         impl = inst.impl
-        captures = " ".join(f"{crate_prefix}{i.name}%{i.inst_id}" for i in inst.captures)
-        print(f"inst {crate_prefix}{inst.name}%{inst.inst_id} = {crate_prefix}{impl.name}!{impl.lambda_id}!{impl.continuation_id}[{captures}];")
+        captures = " ".join(f"{i.path}%{i.inst_id}" for i in inst.captures)
+        print(f"inst {inst.path}%{inst.inst_id} = {impl.path}!{impl.lambda_id}!{impl.continuation_id}[{captures}];")
 
     def visit_instance_definition(inst_def: InstanceDefinition):
         inst = inst_def.inst
-        print(f"pub {crate_prefix}{inst_def.name} = {crate_prefix}{inst.name}%{inst.inst_id};")
+        print(f"pub {inst_def.path} = {inst.path}%{inst.inst_id};")
 
     def visit_literal(lit: ValueLiteral) -> str:
         match lit:
-            case IdentLiteral(Global(ident)):
-                return f"{crate_prefix}{ident}"
+            case IdentLiteral(ExternGlobal(ident)):
+                return f"{ident}"
+            case PathLiteral(PathGlobal(path)):
+                return f"{path}"
             case AnonymousLiteral(id):
                 return f"${id}"
             case ImplementationLiteral(impl):
                 captures = " ".join(f"${id}" for id in impl.anonymous_captures)
-                return f"{crate_prefix}{impl.name}!{impl.lambda_id}!{impl.continuation_id}[{captures}]"
+                return f"{impl.path}!{impl.lambda_id}!{impl.continuation_id}[{captures}]"
             case InstanceLiteral(inst):
-                return f"{crate_prefix}{inst.name}%{inst.inst_id}"
+                return f"{inst.path}%{inst.inst_id}"
             case _:
                 raise PrettyError(f"unexpected AST node encountered: {lit}")
 

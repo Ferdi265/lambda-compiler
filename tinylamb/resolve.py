@@ -10,7 +10,11 @@ class Local(Ident):
     pass
 
 @dataclass
-class Global(Ident):
+class ExternGlobal(Ident):
+    pass
+
+@dataclass
+class PathGlobal(PathExpr):
     pass
 
 class ResolveError(Exception):
@@ -18,22 +22,33 @@ class ResolveError(Exception):
 
 @dataclass
 class Context:
-    globals: OrderedSet[str] = field(default_factory = OrderedSet)
     locals: OrderedSet[str] = field(default_factory = OrderedSet)
+    globals: OrderedSet[Path] = field(default_factory = OrderedSet)
+    externs: OrderedSet[str] = field(default_factory = OrderedSet)
+    extern_crates: OrderedSet[str] = field(default_factory = OrderedSet)
     referenced: OrderedSet[str] = field(default_factory = OrderedSet)
-    path_globals: OrderedSet[Path] = field(default_factory = OrderedSet)
 
     def __copy__(self) -> Context:
-        return Context(copy(self.globals), copy(self.locals), OrderedSet(), copy(self.path_globals))
+        return Context(copy(self.locals), copy(self.globals), copy(self.externs), copy(self.extern_crates), OrderedSet())
 
-def resolve(prog: List[Statement], globals: Optional[OrderedSet[str]] = None, crate: Optional[Path] = None) -> List[Statement]:
+def resolve(prog: List[Statement], crate: Path, externs: Optional[OrderedSet[str]]) -> List[Statement]:
     """resolve idents into locals and globals and populate lambda captures"""
 
     def visit_program(prog: List[Statement], ctx: Context) -> List[Statement]:
-        return [visit_statement(stmt, ctx) for stmt in prog]
+        statements = []
+        for stmt in prog:
+            new_stmt = visit_statement(stmt, ctx)
+            if new_stmt is not None:
+                statements.append(new_stmt)
 
-    def visit_statement(stmt: Statement, ctx: Context) -> Statement:
+        return statements
+
+    def visit_statement(stmt: Statement, ctx: Context) -> Optional[Statement]:
         match stmt:
+            case ExternCrate() as ext_crate:
+                return visit_extern_crate(ext_crate, ctx)
+            case Extern() as ext:
+                return visit_extern(ext, ctx)
             case NameAssignment() as ass:
                 return visit_name_assignment(ass, ctx)
             case PathAssignment() as ass:
@@ -41,33 +56,41 @@ def resolve(prog: List[Statement], globals: Optional[OrderedSet[str]] = None, cr
             case unknown:
                 raise ResolveError(f"unexpected AST node encountered: {unknown}")
 
-    def visit_name_assignment(ass: NameAssignment, ctx: Context) -> Assignment:
-        if ass.name in ctx.globals:
-            raise ResolveError(f"Redefinition of '{ass.name}'")
+    def visit_extern_crate(ext_crate: ExternCrate, ctx: Context):
+        if ext_crate.name in ctx.extern_crates:
+            raise ResolveError(f"Redefinition of extern crate '{ext_crate.name}'")
 
-        if crate is not None:
-            path_name = crate / ass.name
-            if path_name in ctx.path_globals:
-                raise ResolveError(f"Redefinition of '{ass.name}' (previously defined as '{path_name}')")
+        ctx.extern_crates.add(ext_crate.name)
+
+    def visit_extern(ext: Extern, ctx: Context):
+        if ext.name in ctx.externs:
+            raise ResolveError(f"Redefinition of extern '{ext.name}'")
+
+        ctx.externs.add(ext.name)
+
+    def visit_name_assignment(ass: NameAssignment, ctx: Context) -> Assignment:
+        if ass.name in ctx.externs:
+            raise ResolveError(f"Redefinition of extern '{ass.name}'")
+
+        path = crate / ass.name
+        if path in ctx.globals:
+            raise ResolveError(f"Redefinition of crate global '{ass.name}'")
 
         value = visit_expr(ass.value, copy(ctx))
 
-        ctx.globals.add(ass.name)
-        return NameAssignment(ass.name, value)
+        ctx.globals.add(path)
+        return PathAssignment(path, value)
 
     def visit_path_assignment(ass: PathAssignment, ctx: Context) -> Assignment:
-        if ass.path in ctx.path_globals:
-            raise ResolveError(f"Redefinition of '{ass.path}'")
+        if ass.path in ctx.globals:
+            raise ResolveError(f"Redefinition of global '{ass.path}'")
 
-        if crate is not None:
-            local_name = ass.path.components[-1]
-            path_name = crate / local_name
-            if path_name == ass.path and local_name in ctx.globals:
-                raise ResolveError(f"Redefinition of '{ass.path}' (previously defined as '{local_name}')")
+        if ass.path.components[0] in ctx.extern_crates:
+            raise ResolveError(f"Definition of extern crate global '{ass.path}'")
 
         value = visit_expr(ass.value, copy(ctx))
 
-        ctx.path_globals.add(ass.path)
+        ctx.globals.add(ass.path)
         return PathAssignment(ass.path, value)
 
     def visit_expr(expr: Expr, ctx: Context) -> Expr:
@@ -80,6 +103,8 @@ def resolve(prog: List[Statement], globals: Optional[OrderedSet[str]] = None, cr
                 return visit_lambda(lamb, ctx)
             case Ident() as ident:
                 return visit_ident(ident, ctx)
+            case PathExpr() as path_expr:
+                return visit_path_expr(path_expr, ctx)
             case unknown:
                 raise ResolveError(f"unexpected AST node encountered: {unknown}")
 
@@ -94,14 +119,33 @@ def resolve(prog: List[Statement], globals: Optional[OrderedSet[str]] = None, cr
 
         return Lambda(lamb.name, body, captures)
 
-    def visit_ident(ident: Ident, ctx: Context) -> Ident:
+    def visit_ident(ident: Ident, ctx: Context) -> Expr:
         ctx.referenced.add(ident.name)
 
         if ident.name in ctx.locals:
             return Local(ident.name)
-        elif ident.name in ctx.globals:
-            return Global(ident.name)
+        elif ident.name in ctx.externs:
+            return ExternGlobal(ident.name)
+        elif crate / ident.name in ctx.globals:
+            return PathGlobal(crate / ident.name)
         else:
             raise ResolveError(f"'{ident.name}' is undefined")
 
-    return visit_program(prog, Context(globals or OrderedSet()))
+    def visit_path_expr(path_expr: PathExpr, ctx: Context) -> Expr:
+        crate_name = path_expr.path.components[0]
+
+        if crate_name == crate:
+            if path_expr.path in ctx.globals:
+                return PathGlobal(path_expr.path)
+            else:
+                raise ResolveError(f"'{path_expr.path}' is undefined")
+        else:
+            if crate_name in ctx.extern_crates:
+                return PathGlobal(path_expr.path)
+            else:
+                raise ResolveError(f"'{path_expr.path}' is from an undeclared extern crate")
+
+    if externs is None:
+        externs = OrderedSet()
+
+    return visit_program(prog, Context(externs))

@@ -41,6 +41,8 @@ def rechain(prog: List[Statement]) -> List[Statement]:
                 return Lambda(name, visit_chain(body), captures)
             case Ident() as ident:
                 return ident
+            case PathExpr() as path_expr:
+                return path_expr
             case _:
                 raise RechainError(f"unexpected AST node encountered: {expr}")
 

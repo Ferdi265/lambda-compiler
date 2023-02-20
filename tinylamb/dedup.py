@@ -16,16 +16,16 @@ class DedupImplementationsContext:
     definitions: List[InstanceDefinition] = field(default_factory = list)
     program: List[Statement] = field(default_factory = list)
 
-    inst_hash: Dict[Tuple[str, int], tuple] = field(default_factory = dict)
-    impl_hash: Dict[Tuple[str, int, int], tuple] = field(default_factory = dict)
+    inst_hash: Dict[Tuple[Path, int], tuple] = field(default_factory = dict)
+    impl_hash: Dict[Tuple[Path, int, int], tuple] = field(default_factory = dict)
     inst_dedup: Dict[tuple, Instance] = field(default_factory = dict)
     impl_dedup: Dict[tuple, Implementation] = field(default_factory = dict)
 
-    def inst_hash_key(self, inst: Instance) -> Tuple[str, int]:
-        return (inst.name, inst.inst_id)
+    def inst_hash_key(self, inst: Instance) -> Tuple[Path, int]:
+        return (inst.path, inst.inst_id)
 
-    def impl_hash_key(self, impl: Implementation) -> Tuple[str, int, int]:
-        return (impl.name, impl.lambda_id, impl.continuation_id)
+    def impl_hash_key(self, impl: Implementation) -> Tuple[Path, int, int]:
+        return (impl.path, impl.lambda_id, impl.continuation_id)
 
     def dedup_inst(self, inst: Instance) -> Tuple[Instance, tuple]:
         inst_hash_key = self.inst_hash_key(inst)
@@ -49,14 +49,16 @@ class DedupImplementationsContext:
 
     def hash_literal(self, lit: ValueLiteral) -> tuple:
         match lit:
-            case IdentLiteral(Global(ident)):
-                return ("global", ident)
+            case IdentLiteral(ExternGlobal(ident)):
+                return ("extern", ident)
+            case PathLiteral(PathGlobal(path)):
+                return ("global", path)
             case AnonymousLiteral(id):
                 return ("anonymous", id)
             case ImplementationLiteral(impl):
                 dedup_impl, hash_value = self.dedup_impl(impl)
                 lit.impl = Implementation(
-                    dedup_impl.name, dedup_impl.lambda_id, dedup_impl.continuation_id,
+                    dedup_impl.path, dedup_impl.lambda_id, dedup_impl.continuation_id,
                     impl.arg_literal, impl.ident_captures, impl.anonymous_captures
                 )
                 return ("impl", hash_value, tuple(impl.anonymous_captures))
