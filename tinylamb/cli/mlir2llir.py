@@ -43,7 +43,7 @@ def main():
         code = f.read()
 
     ast = parse_mlir(code)
-    llir = generate_llir(ast)
+    llir = generate_llir(ast, parse_path(crate))
 
     with sys.stdout if outfile == "-" else open(outfile, "w") as f:
         f.write(llir)

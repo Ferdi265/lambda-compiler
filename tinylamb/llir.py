@@ -14,7 +14,7 @@ class GenerateLLIRContext:
     def define_global(self, path: Path):
         pass
 
-def generate_llir(prog: List[Statement]) -> str:
+def generate_llir(prog: List[Statement], crate: Path) -> str:
     def visit_program(prog: List[Statement]) -> str:
         ctx = GenerateLLIRContext()
 
