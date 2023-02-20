@@ -158,6 +158,49 @@ def pretty(prog: List[Statement]):
 
     visit_program(prog)
 
+def pretty_hlir(prog: List[Statement]):
+    def visit_program(prog: List[Statement]) -> List[Statement]:
+        return [visit_statement(stmt) for stmt in prog]
+
+    def visit_statement(stmt: Statement):
+        match stmt:
+            case ExternCrate(crate):
+                print(f"extern crate {crate};")
+            case Extern(name):
+                print(f"extern {name};")
+            case NameAssignment(name, value):
+                print(f"{name} = ", end="")
+                visit_expr(value)
+                print(";")
+            case PathAssignment(path, value):
+                print(f"{path} = ", end="")
+                visit_expr(value)
+                print(";")
+            case _:
+                raise PrettyError(f"unexpected AST node encountered: {stmt}")
+
+    def visit_expr(expr: Expr):
+        match expr:
+            case Paren(inner):
+                print("(", end="")
+                visit_expr(inner)
+                print(")", end="")
+            case Call(fn, arg):
+                visit_expr(fn)
+                print(" ", end="")
+                visit_expr(arg)
+            case Lambda(name, body, captures):
+                print(f"{name} -> ", end="")
+                visit_expr(body)
+            case Ident(name):
+                print(f"{name}", end="")
+            case PathExpr(path):
+                print(f"{path}", end="")
+            case _:
+                raise PrettyError(f"unexpected AST node encountered: {expr}")
+
+    visit_program(prog)
+
 def pretty_mlir(prog: List[Statement]):
     def visit_program(prog: List[Statement]) -> List[Statement]:
         return [visit_statement(stmt) for stmt in prog]

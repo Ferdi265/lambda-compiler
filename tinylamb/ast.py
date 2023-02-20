@@ -21,6 +21,9 @@ class Path:
     def __str__(self) -> str:
         return "::".join(self.components)
 
+    def __repr__(self) -> str:
+        return str(self)
+
     def __lt__(self, other: Path) -> bool:
         return tuple(self.components) < tuple(other.components)
 
