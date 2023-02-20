@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import *
 from dataclasses import dataclass, field
 from .orderedset import OrderedSet
@@ -10,10 +11,40 @@ class Statement:
 class Expr:
     pass
 
+@dataclass(frozen=True, init=False)
+class Path:
+    components: Sequence[str]
+
+    def __init__(self, components: Sequence[str]):
+        object.__setattr__(self, "components", tuple(components))
+
+    def __str__(self) -> str:
+        return "::".join(self.components)
+
+    def __truediv__(self, other: Union[Path, str]) -> Path:
+        if isinstance(other, Path):
+            return Path(tuple(self.components) + tuple(other.components))
+        else:
+            return Path(tuple(self.components) + (other,))
+
 @dataclass
 class Assignment(Statement):
+    pass
+
+@dataclass
+class NameAssignment(Assignment):
     name: str
     value: Expr
+
+@dataclass
+class PathAssignment(Assignment):
+    path: Path
+    value: Expr
+
+@dataclass
+class Import(Statement):
+    path: Path
+    name: Optional[str]
 
 @dataclass
 class Paren(Expr):
@@ -33,3 +64,7 @@ class Lambda(Expr):
 @dataclass
 class Ident(Expr):
     name: str
+
+@dataclass
+class PathExpr(Expr):
+    path: Path

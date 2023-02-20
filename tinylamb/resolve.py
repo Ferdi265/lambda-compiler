@@ -21,14 +21,12 @@ class Context:
     globals: OrderedSet[str] = field(default_factory = OrderedSet)
     locals: OrderedSet[str] = field(default_factory = OrderedSet)
     referenced: OrderedSet[str] = field(default_factory = OrderedSet)
+    path_globals: OrderedSet[Path] = field(default_factory = OrderedSet)
 
     def __copy__(self) -> Context:
-        return Context(copy(self.globals), copy(self.locals), OrderedSet())
+        return Context(copy(self.globals), copy(self.locals), OrderedSet(), copy(self.path_globals))
 
-    def __contains__(self, arg: str) -> bool:
-        return arg in self.locals or arg in self.globals
-
-def resolve(prog: List[Statement], globals: OrderedSet[str]) -> List[Statement]:
+def resolve(prog: List[Statement], globals: Optional[OrderedSet[str]] = None, crate: Optional[Path] = None) -> List[Statement]:
     """resolve idents into locals and globals and populate lambda captures"""
 
     def visit_program(prog: List[Statement], ctx: Context) -> List[Statement]:
@@ -36,19 +34,41 @@ def resolve(prog: List[Statement], globals: OrderedSet[str]) -> List[Statement]:
 
     def visit_statement(stmt: Statement, ctx: Context) -> Statement:
         match stmt:
-            case Assignment() as ass:
-                return visit_assignment(ass, ctx)
+            case NameAssignment() as ass:
+                return visit_name_assignment(ass, ctx)
+            case PathAssignment() as ass:
+                return visit_path_assignment(ass, ctx)
             case unknown:
                 raise ResolveError(f"unexpected AST node encountered: {unknown}")
 
-    def visit_assignment(ass: Assignment, ctx: Context) -> Assignment:
+    def visit_name_assignment(ass: NameAssignment, ctx: Context) -> Assignment:
         if ass.name in ctx.globals:
             raise ResolveError(f"Redefinition of '{ass.name}'")
+
+        if crate is not None:
+            path_name = crate / ass.name
+            if path_name in ctx.path_globals:
+                raise ResolveError(f"Redefinition of '{ass.name}' (previously defined as '{path_name}')")
 
         value = visit_expr(ass.value, copy(ctx))
 
         ctx.globals.add(ass.name)
-        return Assignment(ass.name, value)
+        return NameAssignment(ass.name, value)
+
+    def visit_path_assignment(ass: PathAssignment, ctx: Context) -> Assignment:
+        if ass.path in ctx.path_globals:
+            raise ResolveError(f"Redefinition of '{ass.path}'")
+
+        if crate is not None:
+            local_name = ass.path.components[-1]
+            path_name = crate / local_name
+            if path_name == ass.path and local_name in ctx.globals:
+                raise ResolveError(f"Redefinition of '{ass.path}' (previously defined as '{local_name}')")
+
+        value = visit_expr(ass.value, copy(ctx))
+
+        ctx.path_globals.add(ass.path)
+        return PathAssignment(ass.path, value)
 
     def visit_expr(expr: Expr, ctx: Context) -> Expr:
         match expr:
@@ -84,4 +104,4 @@ def resolve(prog: List[Statement], globals: OrderedSet[str]) -> List[Statement]:
         else:
             raise ResolveError(f"'{ident.name}' is undefined")
 
-    return visit_program(prog, Context(globals))
+    return visit_program(prog, Context(globals or OrderedSet()))

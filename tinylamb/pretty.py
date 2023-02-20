@@ -21,9 +21,14 @@ def pretty(prog: List[Statement]):
                 print(f"{indent(depth)}- name: {name!r}")
                 print(f"{indent(depth)}- value:")
                 visit_expr(value, depth + 1)
-            case Assignment(name, value):
+            case NameAssignment(name, value):
                 print(f"{indent(depth)}Assignment")
                 print(f"{indent(depth)}- name: {name!r}")
+                print(f"{indent(depth)}- value:")
+                visit_expr(value, depth + 1)
+            case PathAssignment(path, value):
+                print(f"{indent(depth)}Assignment")
+                print(f"{indent(depth)}- path: {path}")
                 print(f"{indent(depth)}- value:")
                 visit_expr(value, depth + 1)
             case Implementation() as impl:

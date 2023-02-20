@@ -11,7 +11,10 @@ class Token(Enum):
     Assign = auto()
     SemiColon = auto()
     Ident = auto()
-    End = auto()
+    End = auto(),
+    PathSep = auto()
+    Use = auto()
+    As = auto()
 
 patterns: List[Tuple[str, Optional[Token]]] = [
     ("( |\n)+", None),
@@ -20,10 +23,15 @@ patterns: List[Tuple[str, Optional[Token]]] = [
     ("\\(", Token.ParenOpen),
     ("\\)", Token.ParenClose),
     ("->", Token.Arrow),
+    ("::", Token.PathSep),
+    ("use", Token.Use),
+    ("as", Token.As),
     ("[a-zA-Z_0-9]*", Token.Ident),
 ]
 
-def tokenize(s: str) -> Generator[Tuple[Token, str], None, None]:
+def tokenize(s: str) -> Generator[Tuple[Token, str, int, int], None, None]:
+    line = 1
+    col = 1
     while len(s) > 0:
         for (p, t) in patterns:
             m = re.match("^" + p, s)
@@ -33,22 +41,25 @@ def tokenize(s: str) -> Generator[Tuple[Token, str], None, None]:
             ms = m.group(0)
             s = s[len(ms):]
             if t is not None:
-                yield (t, ms)
+                yield (t, ms, line, col)
+
+            col = col + len(ms) if "\n" not in ms else 1 + len(ms.rsplit("\n", 1)[1])
+            line += sum(c == "\n" for c in ms)
             break
         else:
-            raise ValueError(f"tokenize error at: '{s}'")
+            raise ValueError(f"tokenize error at line {line} col {col}: '{s}'")
 
 class ParseError(Exception):
     pass
 
 def parse(s: str) -> List[Statement]:
     tokens = tokenize(s)
-    cur, curs = Token.End, ""
+    cur, curs, line, col = Token.End, "", 1, 1
 
     def drop():
-        nonlocal cur, curs
+        nonlocal cur, curs, line, col
         try:
-            cur, curs = next(tokens)
+            cur, curs, line, col = next(tokens)
         except StopIteration:
             cur, curs = Token.End, ""
 
@@ -62,7 +73,15 @@ def parse(s: str) -> List[Statement]:
         return cs
 
     def err() -> NoReturn:
-        raise ParseError(f"parse error at ({cur}, '{curs}')")
+        raise ParseError(f"parse error at line {line} col {col}: ({cur}, '{curs}')")
+
+    def parse_path(crate: str) -> Path:
+        components = [crate]
+        while cur == Token.PathSep:
+            eat()
+            components.append(eat(Token.Ident))
+
+        return Path(components)
 
     def parse_paren() -> Paren:
         chain = Paren(parse_chain())
@@ -73,9 +92,11 @@ def parse(s: str) -> List[Statement]:
         if cur == Token.ParenOpen:
             drop()
             return parse_paren()
-        if cur == Token.Ident:
+        elif cur == Token.Ident:
             name = eat()
-            if cur == Token.Arrow:
+            if cur == Token.PathSep:
+                return PathExpr(parse_path(name))
+            elif cur == Token.Arrow:
                 drop()
                 return Lambda(name, parse_chain())
             return Ident(name)
@@ -89,16 +110,45 @@ def parse(s: str) -> List[Statement]:
         return prev
 
     def parse_assignment() -> Assignment:
+        path: Optional[Path] = None
+
         name = eat(Token.Ident)
+        if cur == Token.PathSep:
+            path = parse_path(name)
+
         eat(Token.Assign)
         value = parse_chain()
         eat(Token.SemiColon)
-        return Assignment(name, value)
+
+        if path is None:
+            return NameAssignment(name, value)
+        else:
+            return PathAssignment(path, value)
+
+    def parse_import() -> Import:
+        eat(Token.Use)
+
+        base = eat(Token.Ident)
+        path = parse_path(base)
+
+        name: Optional[str] = None
+        if cur == Token.As:
+            eat()
+            name = eat(Token.Ident)
+
+        eat(Token.SemiColon)
+        return Import(path, name)
+
+    def parse_statement() -> Statement:
+        if cur == Token.Use:
+            return parse_import()
+        else:
+            return parse_assignment()
 
     def parse_prog() -> List[Statement]:
         statements: List[Statement] = []
         while cur != Token.End:
-            statements.append(parse_assignment())
+            statements.append(parse_statement())
 
         eat(Token.End)
         return statements
