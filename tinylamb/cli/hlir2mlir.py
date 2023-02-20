@@ -42,7 +42,7 @@ def main():
     with open(infile, "r") as f:
         code = f.read()
 
-    ast = parse(code)
+    ast = parse_hlir(code)
     ast = demacro(ast)
     ast = resolve(ast, parse_path(crate))
     ast = rechain(ast)
@@ -52,11 +52,8 @@ def main():
     ast = instantiate_implementations(ast)
     ast = dedup_implementations(ast)
 
-    if outfile == "-":
-        pretty_mlir(ast, file=sys.stdout)
-    else:
-        with open(outfile, "w") as f:
-            pretty_mlir(ast, file=f)
+    with sys.stdout if outfile == "-" else open(outfile, "w") as f:
+        pretty_mlir(ast, file=f)
 
 if __name__ == "__main__":
     main()

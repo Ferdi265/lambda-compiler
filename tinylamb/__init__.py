@@ -9,5 +9,5 @@ from .continuations import *
 from .flattenimpls import *
 from .renumber import *
 from .dedup import *
+from .llir import *
 from .pretty import *
-

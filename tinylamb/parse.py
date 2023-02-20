@@ -62,7 +62,7 @@ def tokenize(s: str) -> Generator[Tuple[Token, str, int, int], None, None]:
 class ParseError(Exception):
     pass
 
-def parse(s: str) -> List[Statement]:
+def parse_hlir(s: str) -> List[Statement]:
     tokens = tokenize(s)
     cur, curs, line, col = Token.End, "", 1, 1
 
@@ -190,6 +190,9 @@ def parse(s: str) -> List[Statement]:
         return statements
 
     return parse_prog()
+
+def parse_mlir(s: str) -> List[Statement]:
+    return []
 
 def parse_path(s: str) -> Path:
     tokens = tokenize(s)
