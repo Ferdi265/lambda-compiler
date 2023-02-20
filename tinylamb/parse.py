@@ -1,5 +1,6 @@
 from typing import *
 from enum import Enum, auto
+import ast
 import re
 
 from .ast import *
@@ -15,8 +16,9 @@ class Token(Enum):
     PathSep = auto()
     Use = auto()
     As = auto(),
-    Extern = auto(),
+    Extern = auto()
     Crate = auto()
+    String = auto()
 
 patterns: List[Tuple[str, Optional[Token]]] = [
     ("( |\n)+", None),
@@ -30,8 +32,12 @@ patterns: List[Tuple[str, Optional[Token]]] = [
     ("as", Token.As),
     ("extern", Token.Extern),
     ("crate", Token.Crate),
-    ("[a-zA-Z_0-9]*", Token.Ident),
+    (r'"([^"\\]|\\[^\n])*"', Token.String),
+    ("[a-zA-Z_0-9]+", Token.Ident),
 ]
+
+class TokenizeError(Exception):
+    pass
 
 def tokenize(s: str) -> Generator[Tuple[Token, str, int, int], None, None]:
     line = 1
@@ -51,7 +57,7 @@ def tokenize(s: str) -> Generator[Tuple[Token, str, int, int], None, None]:
             line += sum(c == "\n" for c in ms)
             break
         else:
-            raise ValueError(f"tokenize error at line {line} col {col}: '{s}'")
+            raise TokenizeError(f"tokenize error at line {line} col {col}: '{s}'")
 
 class ParseError(Exception):
     pass
@@ -92,6 +98,31 @@ def parse(s: str) -> List[Statement]:
         eat(Token.ParenClose)
         return chain
 
+    def build_call_chain(rest: List[Expr]) -> Expr:
+        rest, chain = rest[:-1], rest[-1]
+        for expr in reversed(rest):
+            chain = Call(expr, chain)
+        return chain
+
+    def build_number(n: int) -> Expr:
+        digit_globals = [PathExpr(Path(("std", str(digit)))) for digit in str(n)]
+        dec_global = PathExpr(Path(("std", f"dec{len(digit_globals)}")))
+
+        if len(digit_globals) == 1:
+            return digit_globals[0]
+
+        return Paren(build_call_chain(cast(List[Expr], [dec_global] + digit_globals)))
+
+    def parse_string() -> Expr:
+        s = eat(Token.String)
+        s = ast.literal_eval(s)
+
+        char_exprs = [build_number(ord(c)) for c in s]
+        len_expr = build_number(len(char_exprs))
+
+        list_n_global = PathExpr(Path(("std", "list_n")))
+        return Paren(build_call_chain(cast(List[Expr], [list_n_global, len_expr] + char_exprs)))
+
     def parse_expr() -> Expr:
         if cur == Token.ParenOpen:
             drop()
@@ -104,6 +135,8 @@ def parse(s: str) -> List[Statement]:
                 drop()
                 return Lambda(name, parse_chain())
             return Ident(name)
+        elif cur == Token.String:
+            return parse_string()
         err()
 
     def parse_chain() -> Expr:
