@@ -99,9 +99,9 @@ def parse(s: str) -> List[Statement]:
         return chain
 
     def build_call_chain(rest: List[Expr]) -> Expr:
-        rest, chain = rest[:-1], rest[-1]
-        for expr in reversed(rest):
-            chain = Call(expr, chain)
+        chain, rest = rest[0], rest[1:]
+        for expr in rest:
+            chain = Call(chain, expr)
         return chain
 
     def build_number(n: int) -> Expr:
