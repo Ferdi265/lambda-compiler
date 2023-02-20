@@ -15,10 +15,14 @@ class Instance(Statement):
 class InstanceDefinition(Statement):
     path: Path
     inst: Instance
+    needs_init: bool
 
 @dataclass
 class InstanceLiteral(ValueLiteral):
     inst: Instance
+
+class InstantiateNotYetSeenError(Exception):
+    pass
 
 class InstantiateError(Exception):
     pass
@@ -36,12 +40,23 @@ class InstantiateContext:
     definitions: List[InstanceDefinition] = field(default_factory = list)
 
     def resolve_impl(self, impl: Implementation) -> Implementation:
+        if (impl.path, impl.lambda_id, impl.continuation_id) not in self.impl_table:
+            raise InstantiateNotYetSeenError()
         return self.impl_table[(impl.path, impl.lambda_id, impl.continuation_id)]
 
+    def resolve_impl_inst(self, impl: Implementation) -> Instance:
+        if (impl.path, impl.lambda_id, impl.continuation_id) not in self.impl_inst_table:
+            raise InstantiateNotYetSeenError()
+        return self.impl_inst_table[(impl.path, impl.lambda_id, impl.continuation_id)]
+
     def resolve_inst(self, inst: Instance) -> Instance:
+        if (inst.path, inst.inst_id) not in self.inst_table:
+            raise InstantiateNotYetSeenError()
         return self.inst_table[(inst.path, inst.inst_id)]
 
     def resolve_path_global(self, path: Path) -> Instance:
+        if path not in self.def_table:
+            raise InstantiateNotYetSeenError()
         return self.def_table[path].inst
 
     def next_inst_id(self, path: Path) -> int:
@@ -64,8 +79,14 @@ class InstantiateContext:
     def evaluate_definition(self, impl: Implementation):
         assert len(impl.anonymous_captures) == 0
 
-        inst = self.evaluate_impl(impl, [])
-        inst_def = InstanceDefinition(impl.path, inst)
+        try:
+            inst = self.evaluate_impl(impl, [])
+            needs_init = False
+        except InstantiateNotYetSeenError:
+            inst = self.resolve_impl_inst(impl)
+            needs_init = True
+
+        inst_def = InstanceDefinition(impl.path, inst, needs_init)
         self.definitions.append(inst_def)
         self.def_table[impl.path] = inst_def
 
@@ -155,7 +176,7 @@ def instantiate_implementations(prog: List[Statement]) -> List[Statement]:
     def visit_literal(lit: ValueLiteral, ctx: InstantiateContext) -> ValueLiteral:
         match lit:
             case PathLiteral(PathGlobal(path)):
-                if path in ctx.def_table:
+                if path in ctx.def_table and not ctx.def_table[path].needs_init:
                     return InstanceLiteral(ctx.def_table[path].inst)
             case ImplementationLiteral(impl):
                 impl = ctx.resolve_impl(impl)

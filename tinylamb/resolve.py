@@ -132,15 +132,16 @@ def resolve(prog: List[Statement], crate: Path, externs: Optional[OrderedSet[str
             raise ResolveError(f"'{ident.name}' is undefined")
 
     def visit_path_expr(path_expr: PathExpr, ctx: Context) -> Expr:
-        crate_name = path_expr.path.components[0]
+        crate_name = crate.components[0]
+        path_crate_name = path_expr.path.components[0]
 
-        if crate_name == crate:
+        if path_crate_name == crate_name:
             if path_expr.path in ctx.globals:
                 return PathGlobal(path_expr.path)
             else:
                 raise ResolveError(f"'{path_expr.path}' is undefined")
         else:
-            if crate_name in ctx.extern_crates:
+            if path_crate_name in ctx.extern_crates:
                 return PathGlobal(path_expr.path)
             else:
                 raise ResolveError(f"'{path_expr.path}' is from an undeclared extern crate")

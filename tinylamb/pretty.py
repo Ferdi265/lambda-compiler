@@ -196,7 +196,8 @@ def pretty_mlir(prog: List[Statement]):
 
     def visit_instance_definition(inst_def: InstanceDefinition):
         inst = inst_def.inst
-        print(f"pub {inst_def.path} = {inst.path}%{inst.inst_id};")
+        init_tag = " $$" if inst_def.needs_init else ""
+        print(f"pub {inst_def.path} = {inst.path}%{inst.inst_id}{init_tag};")
 
     def visit_literal(lit: ValueLiteral) -> str:
         match lit:
