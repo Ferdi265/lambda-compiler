@@ -16,6 +16,7 @@ def main():
         code = f.read()
 
     ast = parse(code)
+    ast = demacro(ast)
     ast = resolve(ast, crate, OrderedSet())
     ast = rechain(ast)
     ast = compute_continuations(ast)

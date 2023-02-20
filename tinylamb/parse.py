@@ -98,30 +98,10 @@ def parse(s: str) -> List[Statement]:
         eat(Token.ParenClose)
         return chain
 
-    def build_call_chain(rest: List[Expr]) -> Expr:
-        chain, rest = rest[0], rest[1:]
-        for expr in rest:
-            chain = Call(chain, expr)
-        return chain
-
-    def build_number(n: int) -> Expr:
-        digit_globals = [PathExpr(Path(("std", str(digit)))) for digit in str(n)]
-        dec_global = PathExpr(Path(("std", f"dec{len(digit_globals)}")))
-
-        if len(digit_globals) == 1:
-            return digit_globals[0]
-
-        return Paren(build_call_chain(cast(List[Expr], [dec_global] + digit_globals)))
-
-    def parse_string() -> Expr:
+    def parse_string() -> String:
         s = eat(Token.String)
         s = ast.literal_eval(s)
-
-        char_exprs = [build_number(ord(c)) for c in s]
-        len_expr = build_number(len(char_exprs))
-
-        list_n_global = PathExpr(Path(("std", "list_n")))
-        return Paren(build_call_chain(cast(List[Expr], [list_n_global, len_expr] + char_exprs)))
+        return String(s)
 
     def parse_expr() -> Expr:
         if cur == Token.ParenOpen:

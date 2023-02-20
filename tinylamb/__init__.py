@@ -2,6 +2,7 @@ from .version import *
 from .orderedset import *
 from .ast import *
 from .parse import *
+from .demacro import *
 from .resolve import *
 from .rechain import *
 from .continuations import *

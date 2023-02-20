@@ -82,3 +82,7 @@ class Ident(Expr):
 @dataclass
 class PathExpr(Expr):
     path: Path
+
+@dataclass
+class String(Expr):
+    content: str
