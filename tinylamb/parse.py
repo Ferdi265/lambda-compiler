@@ -6,19 +6,19 @@ import re
 from .ast import *
 
 class Token(Enum):
+    Assign = auto()
+    SemiColon = auto()
     ParenOpen = auto()
     ParenClose = auto()
     Arrow = auto()
-    Assign = auto()
-    SemiColon = auto()
-    Ident = auto()
-    End = auto(),
     PathSep = auto()
     Use = auto()
     As = auto(),
     Extern = auto()
     Crate = auto()
     String = auto()
+    Ident = auto()
+    End = auto(),
 
 patterns: List[Tuple[str, Optional[Token]]] = [
     ("( |\n)+", None),
