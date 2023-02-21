@@ -21,19 +21,19 @@ c2nat = n -> std::2nd (std::while
 eof = std::dec3 std::2 std::5 std::6;
 
 pop_eof = list ->
-    std::equal (std::first list) io::eof
+    std::equal (std::first list) eof
         (x -> std::rest list)
         (x -> list)
     std::ident;
 
-putc = n -> lambda_io_putc (io::nat2c n);
+putc = n -> lambda_io_putc (nat2c n);
 
-puts = s -> std::map io::putc s;
+puts = s -> std::map putc s;
 
-getc = x -> io::c2nat (lambda_io_getc x);
+getc = x -> c2nat (lambda_io_getc x);
 
-gets = x -> std::reverse (io::pop_eof (std::while
-    (l -> std::not (std::or (std::equal (std::first l) io::eof) (std::equal (std::first l) std::10)))
-    (l -> std::prepend (io::getc std::ident) l)
-    (std::prepend (io::getc std::ident) std::nil)
+gets = x -> std::reverse (pop_eof (std::while
+    (l -> std::not (std::or (std::equal (std::first l) eof) (std::equal (std::first l) std::10)))
+    (l -> std::prepend (getc std::ident) l)
+    (std::prepend (getc std::ident) std::nil)
 ));
