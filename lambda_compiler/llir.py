@@ -4,17 +4,11 @@ from collections import defaultdict
 from typing import *
 
 from .dedup import *
+from .target import *
 from .llir_runtime import *
 
 class GenerateLLIRError(Exception):
     pass
-
-@dataclass
-class Architecture:
-    triple: str
-    data_layout: str
-    ptr_size: int
-    ptr_align: int
 
 @dataclass
 class InstanceType:
