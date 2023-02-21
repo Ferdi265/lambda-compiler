@@ -22,7 +22,7 @@ OBJECTS     := $(MAIN_LL:build/%.ll=build/%.ll.o) $(HLIR_SRC:src/%.hlir=build/%.
 all: build/$(TARGET)
 
 clean:
-	rm -r build
+	rm -rf build
 
 build/%.mlir: src/%.hlir
 	@mkdir -p $$(dirname $@)
