@@ -412,7 +412,7 @@ def generate_llir(prog: List[Statement], crate: Path, arch: Architecture) -> str
             captures = len(inst.captures),
         )
 
-        ctx.llir += ",".join(f" %lambda* @{capture.path}" for capture in inst.captures)
+        ctx.llir += ",".join(f" %lambda* @{ctx.mangle_inst(capture, alt=False)}" for capture in inst.captures)
 
         ctx.llir += f" ] }}, align {ctx.arch.ptr_align}\n"
 
