@@ -23,3 +23,19 @@ Compilation is done in four steps:
 ## Language
 
 Lambda is an eagerly evaluated lambda calculus.
+
+- Function Application: `func arg1 arg2` is equivalent to `(func(arg1))(arg2)` in Python
+- Lambda Construction: `func arg -> body` is equivalent to `func(lambda arg: body)` in Python
+
+A Lambda program is a list of definitions that can only refer to previous
+definitions (not to themselves). This means one has to use a fixed point
+combinator such as the y combinator to create recursive functions.
+
+### Example:
+
+```
+true = a -> b -> a;
+false = a -> b -> b;
+
+not = a -> a false true;
+```
