@@ -44,7 +44,7 @@ def main():
 
     ast = parse_hlir(code)
     ast = demacro(ast)
-    ast = resolve(ast, parse_path(crate))
+    ast = resolve(ast, crate)
     ast = rechain(ast)
     ast = compute_continuations(ast)
     ast = flatten_implementations(ast)

@@ -31,7 +31,7 @@ class Context:
     def __copy__(self) -> Context:
         return Context(copy(self.locals), copy(self.globals), copy(self.externs), copy(self.extern_crates), OrderedSet())
 
-def resolve(prog: List[Statement], crate: Path, externs: Optional[OrderedSet[str]] = None) -> List[Statement]:
+def resolve(prog: List[Statement], crate: str, externs: Optional[OrderedSet[str]] = None) -> List[Statement]:
     """resolve idents into locals and globals and populate lambda captures"""
 
     def visit_program(prog: List[Statement], ctx: Context) -> List[Statement]:
@@ -72,7 +72,7 @@ def resolve(prog: List[Statement], crate: Path, externs: Optional[OrderedSet[str
         if ass.name in ctx.externs:
             raise ResolveError(f"Redefinition of extern '{ass.name}'")
 
-        path = crate / ass.name
+        path = Path(()) / crate / ass.name
         if path in ctx.globals:
             raise ResolveError(f"Redefinition of crate global '{ass.name}'")
 
@@ -126,16 +126,15 @@ def resolve(prog: List[Statement], crate: Path, externs: Optional[OrderedSet[str
             return Local(ident.name)
         elif ident.name in ctx.externs:
             return ExternGlobal(ident.name)
-        elif crate / ident.name in ctx.globals:
-            return PathGlobal(crate / ident.name)
+        elif Path(()) / crate / ident.name in ctx.globals:
+            return PathGlobal(Path(()) / crate / ident.name)
         else:
             raise ResolveError(f"'{ident.name}' is undefined")
 
     def visit_path_expr(path_expr: PathExpr, ctx: Context) -> Expr:
-        crate_name = crate.components[0]
         path_crate_name = path_expr.path.components[0]
 
-        if path_crate_name == crate_name:
+        if path_crate_name == crate:
             if path_expr.path in ctx.globals:
                 return PathGlobal(path_expr.path)
             else:

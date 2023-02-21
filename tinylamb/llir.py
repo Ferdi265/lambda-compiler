@@ -115,15 +115,11 @@ class GenerateLLIRContext:
     global_cache: OrderedSet[Path] = field(default_factory = OrderedSet)
     init_cache: List[InstanceDefinition] = field(default_factory = list)
 
-    def mangle_crate_init(self, crate: Path) -> str:
-        assert len(crate.components) == 1
-        crate_name = crate.components[0]
-        return f"_L{len(crate_name)}I{crate_name}"
+    def mangle_crate_init(self, crate: str) -> str:
+        return f"_L{len(crate)}I{crate}"
 
-    def mangle_crate_fini(self, crate: Path) -> str:
-        assert len(crate.components) == 1
-        crate_name = crate.components[0]
-        return f"_L{len(crate_name)}F{crate_name}"
+    def mangle_crate_fini(self, crate: str) -> str:
+        return f"_L{len(crate)}F{crate}"
 
     def mangle_path(self, path: Path) -> str:
         return "_L" + "".join(f"{len(name)}N{name}" for name in path.components)
@@ -252,6 +248,14 @@ class GenerateLLIRContext:
         )
         return index
 
+    def write_lambda_null_call(self, index_factory: IndexFactory, value: ValueLiteral) -> ValueLiteral:
+        index = index_factory.next()
+        self.llir += "    {index} = tail call %lambda* @lambda_null_call(%lambda* {value})\n".format(
+            index = self.mangle_lit(index),
+            value = self.mangle_lit(value)
+        )
+        return index
+
     def write_capture_ptr(self, index_factory: IndexFactory, lamb: ValueLiteral, capture_index: int) -> ValueLiteral:
         index = index_factory.next()
         self.llir += "    {index} = getelementptr inbounds %lambda, %lambda* {lamb}, i{ptr_bits} 0, i32 1, i{ptr_bits} {capture_index}\n".format(
@@ -311,7 +315,14 @@ class GenerateLLIRContext:
         )
         return index
 
-    def write_crate_init_fini(self, crate: Path):
+    def write_store_global(self, index_factory: IndexFactory, path: Path, value: ValueLiteral):
+        self.llir += "    store %lambda* {value}, %lambda** @{path}, align {ptr_align}\n".format(
+            value = self.mangle_lit(value),
+            path = self.mangle_path(path),
+            ptr_align = self.arch.ptr_align
+        )
+
+    def write_crate_init_fini(self, crate: str):
         self.llir += "define external dso_local void @{crate_init}() unnamed_addr {{\n".format(
             crate_init = self.mangle_crate_init(crate)
         )
@@ -320,17 +331,9 @@ class GenerateLLIRContext:
         index_factory.next()
 
         for inst_def in self.init_cache:
-            index = index_factory.next()
             self.write_lambda_ref(InstanceLiteral(inst_def.inst), 1)
-            self.llir += "    {index} = call %lambda* @lambda_null_call(%lambda* @{inst_path})\n".format(
-                index = self.mangle_lit(index),
-                inst_path = self.mangle_inst(inst_def.inst, alt = False)
-            )
-            self.llir += "    store %lambda* {index}, %lambda** @{inst_def_path}, align {ptr_align}\n".format(
-                index = self.mangle_lit(index),
-                inst_def_path = self.mangle_def(inst_def),
-                ptr_align = self.arch.ptr_align
-            )
+            index = self.write_lambda_null_call(index_factory, InstanceLiteral(inst_def.inst))
+            self.write_store_global(index_factory, inst_def.path, index)
 
         self.llir += "    ret void\n"
         self.llir += "}\n"
@@ -344,22 +347,15 @@ class GenerateLLIRContext:
         index_factory.next()
 
         for inst_def in reversed(self.init_cache):
-            index = index_factory.next()
-            self.llir += "    {index} = load %lambda*, %lambda** @{inst_def_path}, align {ptr_align}\n".format(
-                index = self.mangle_lit(index),
-                inst_def_path = self.mangle_def(inst_def),
-                ptr_align = self.arch.ptr_align
-            )
-            self.llir += "    call void @lambda_unref(%lambda* {index})\n".format(
-                index = self.mangle_lit(index)
-            )
+            index = self.write_load_global(index_factory, inst_def.path)
+            self.write_lambda_unref(index)
 
         self.llir += "    ret void\n"
         self.llir += "}\n"
         self.llir += "\n"
 
 
-def generate_llir(prog: List[Statement], crate: Path, arch: Architecture) -> str:
+def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
     def visit_program(prog: List[Statement]) -> str:
         ctx = GenerateLLIRContext(arch)
 
@@ -512,3 +508,61 @@ def generate_llir(prog: List[Statement], crate: Path, arch: Architecture) -> str
         return SimpleLiteral(lit)
 
     return visit_program(prog)
+
+def generate_main_llir(crates: List[str], arch: Architecture) -> str:
+    ctx = GenerateLLIRContext(arch)
+
+    ctx.write_runtime()
+    ctx.llir += "\n"
+
+    # global ctors
+    for crate in crates:
+        ctx.llir += "declare void @{crate_init}() unnamed_addr\n".format(
+            crate_init = ctx.mangle_crate_init(crate)
+        )
+
+    ctx.llir += "define dso_local void @_LI() {\n"
+    for crate in crates:
+        ctx.llir += "    tail call void @{crate_init}()\n".format(
+            crate_init = ctx.mangle_crate_init(crate)
+        )
+    ctx.llir += "    ret void\n"
+    ctx.llir += "}\n"
+    ctx.llir += "\n"
+
+    # global dtors
+    for crate in reversed(crates):
+        ctx.llir += "declare void @{crate_fini}() unnamed_addr\n".format(
+            crate_fini = ctx.mangle_crate_fini(crate)
+        )
+
+    ctx.llir += "define dso_local void @_LF() {\n"
+    for crate in reversed(crates):
+        ctx.llir += "    tail call void @{crate_fini}()\n".format(
+            crate_fini = ctx.mangle_crate_fini(crate)
+        )
+    ctx.llir += "    ret void\n"
+    ctx.llir += "}\n"
+    ctx.llir += "\n"
+
+    # ctor/dtor declarations
+    ctx.llir += "@llvm.global_ctors = appending global [1 x { i32, void()*, i8* }] [{ i32, void()*, i8* } { i32 65535, void()* @_LI, i8* null }]\n"
+    ctx.llir += "@llvm.global_dtors = appending global [1 x { i32, void()*, i8* }] [{ i32, void()*, i8* } { i32 65535, void()* @_LF, i8* null }]\n"
+
+    # main
+    index_factory = IndexFactory()
+    index_factory.next()
+
+    main_crate = crates[-1]
+    main_path = Path(()) / main_crate / "main"
+    ctx.write_global(main_path)
+
+    ctx.llir += "define dso_local i32 @main() unnamed_addr {\n"
+    index = ctx.write_load_global(index_factory, main_path)
+    ctx.write_lambda_ref(index, 1)
+    ret_index = ctx.write_lambda_null_call(index_factory, index)
+    ctx.write_lambda_unref(ret_index)
+    ctx.llir += "    ret i32 0\n"
+    ctx.llir += "}\n"
+
+    return ctx.llir
