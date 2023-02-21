@@ -31,9 +31,9 @@ def demacro_string(string: String) -> Expr:
 
         return Paren(build_call_chain(cast(List[Expr], [dec] + digits)))
 
-    s = string.content
+    s = string.content.encode()
 
-    char_exprs = [build_number(ord(c)) for c in s]
+    char_exprs = [build_number(byte) for byte in s]
     len_expr = build_number(len(char_exprs))
 
     list_n = PathExpr(list_n_path(len(char_exprs)))
