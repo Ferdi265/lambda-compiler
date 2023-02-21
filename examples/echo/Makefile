@@ -1,5 +1,6 @@
 CLANG       := clang
 TARGET      := lambda-echo
+CRATES      := std io echo
 
 CC          := $(CLANG)
 C_OPT       := -Oz -ffunction-sections -fdata-sections
@@ -10,7 +11,6 @@ C_SAN       :=
 C_LINK      := -Wl,--gc-sections
 C_FLAGS     := $(C_OPT) $(C_SAN) $(C_INCLUDES) $(C_STD) $(C_WARN)
 
-CRATES      := std io echo
 MAIN_LL     := build/main.ll
 HLIR_SRC    := $(wildcard src/*.hlir)
 MLIR_SRC    := $(wildcard src/*.mlir)
