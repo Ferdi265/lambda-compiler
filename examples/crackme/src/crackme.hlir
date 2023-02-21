@@ -1,0 +1,14 @@
+extern crate std;
+extern crate io;
+
+compare = list1 -> list2 ->
+    std::foldl std::and std::true (std::zip std::equal (std::append list1 io::eof) (std::append list2 io::eof));
+
+main = _ ->
+    (compare
+        "LosCTF{Church_0bfUsC4t10n}\n"
+        (io::gets std::ident)
+    )
+        (x -> io::puts "ok\n")
+        (x -> io::puts "hack harder\n")
+    std::ident;

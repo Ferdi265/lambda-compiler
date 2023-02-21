@@ -2,6 +2,6 @@ extern crate std;
 extern crate io;
 
 main = _ -> (std::do std::ident
-    (x -> io::puts "Hello\n")
-    (x -> io::puts "World\n")
+    (x -> io::puts "Hello, ")
+    (x -> io::puts "World!\n")
 );

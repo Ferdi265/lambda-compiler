@@ -1,0 +1,39 @@
+extern crate std;
+
+extern lambda_io_zero;
+extern lambda_io_succ;
+extern lambda_io_pred;
+extern lambda_io_iszero;
+extern lambda_io_putc;
+extern lambda_io_getc;
+
+nat2c = n -> std::count lambda_io_succ lambda_io_zero n;
+
+c2nat = n -> std::2nd (std::while
+    (p -> std::not (lambda_io_iszero (std::1st p)))
+    (p -> std::pair
+        (lambda_io_pred (std::1st p))
+        (std::succ (std::2nd p))
+    )
+    (std::pair n std::zero)
+);
+
+eof = std::dec3 std::2 std::5 std::6;
+
+pop_eof = list ->
+    std::equal (std::first list) io::eof
+        (x -> std::rest list)
+        (x -> list)
+    std::ident;
+
+putc = n -> lambda_io_putc (io::nat2c n);
+
+puts = s -> std::map io::putc s;
+
+getc = x -> io::c2nat (lambda_io_getc x);
+
+gets = x -> std::reverse (io::pop_eof (std::while
+    (l -> std::not (std::or (std::equal (std::first l) io::eof) (std::equal (std::first l) std::10)))
+    (l -> std::prepend (io::getc std::ident) l)
+    (std::prepend (io::getc std::ident) std::nil)
+));
