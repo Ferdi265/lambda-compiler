@@ -2,6 +2,7 @@ from .version import __version__
 from .orderedset import *
 from .ast import *
 from .parse import *
+from .parse_hlir import *
 from .demacro import *
 from .resolve import *
 from .rechain import *
@@ -9,5 +10,6 @@ from .continuations import *
 from .flattenimpls import *
 from .renumber import *
 from .dedup import *
+from .parse_mlir import *
 from .llir import *
 from .pretty import *
