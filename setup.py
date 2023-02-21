@@ -3,25 +3,25 @@ from setuptools import setup
 with open("requirements.txt", "r") as f:
     requirements = f.read().splitlines()
 
-with open("tinylamb/version.py", "r") as f:
+with open("lambda_compiler/version.py", "r") as f:
     exec(f.read(), globals())
 
 setup(
-    name = "tinylamb",
-    description = "tiny partial compiler for a subset of the Lambda language",
+    name = "lambda_compiler",
+    description = "a Lambda Calculus to LLVM IR compiler",
     version = __version__,
     author = "Ferdinand Bachmann",
     author_email = "theferdi265@gmail.com",
-    packages = ["tinylamb", "tinylamb.cli"],
+    packages = ["lambda_compiler", "lambda_compiler.cli"],
     entry_points = {
         "console_scripts": [
-            "lambda-hlir2mlir=tinylamb.cli.hlir2mlir:main",
-            "lambda-mlir2llir=tinylamb.cli.mlir2llir:main",
-            "lambda-llir2main=tinylamb.cli.llir2main:main",
+            "lambda-hlir2mlir=lambda_compiler.cli.hlir2mlir:main",
+            "lambda-mlir2llir=lambda_compiler.cli.mlir2llir:main",
+            "lambda-llir2main=lambda_compiler.cli.llir2main:main",
         ]
     },
     package_data = {
-        "tinylamb": ["py.typed"]
+        "lambda_compiler": ["py.typed"]
     },
     python_requires = ">=3.10",
     install_requires = requirements

@@ -1,5 +1,5 @@
-from tinylamb import *
-import tinylamb
+from lambda_compiler import *
+import lambda_compiler
 import argparse
 import os.path
 import sys
@@ -19,7 +19,7 @@ def main():
     ap, args = parse_args()
 
     if args.version:
-        print(f"{ap.prog} {tinylamb.__version__}")
+        print(f"{ap.prog} {lambda_compiler.__version__}")
         return
 
     crates = args.crates
