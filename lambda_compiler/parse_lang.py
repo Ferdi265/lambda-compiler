@@ -24,6 +24,13 @@ def parse_lang(s: str) -> List[Statement]:
     def err() -> NoReturn:
         raise ParseError(f"parse error at line {line} col {col}: ({cur}, '{curs}')")
 
+    def is_number() -> bool:
+        try:
+            int(curs)
+            return True
+        except ValueError:
+            return False
+
     def parse_path(crate: str) -> Path:
         components = [crate]
         while cur == Token.PathSep:
@@ -42,6 +49,19 @@ def parse_lang(s: str) -> List[Statement]:
         s = ast.literal_eval(s)
         return String(s)
 
+    def parse_num() -> Number:
+        s = eat(Token.Ident)
+        return Number(int(s))
+
+    def parse_macro() -> Macro:
+        eat(Token.MacroMarker)
+
+        if cur == Token.String:
+            return parse_string()
+        elif cur == Token.Ident and is_number():
+            return parse_num()
+        err()
+
     def parse_expr() -> Expr:
         if cur == Token.ParenOpen:
             drop()
@@ -54,8 +74,8 @@ def parse_lang(s: str) -> List[Statement]:
                 drop()
                 return Lambda(name, parse_chain())
             return Ident(name)
-        elif cur == Token.String:
-            return parse_string()
+        elif cur == Token.MacroMarker:
+            return parse_macro()
         err()
 
     def parse_chain() -> Expr:

@@ -84,5 +84,13 @@ class PathExpr(Expr):
     path: Path
 
 @dataclass
-class String(Expr):
+class Macro(Expr):
+    pass
+
+@dataclass
+class String(Macro):
     content: str
+
+@dataclass
+class Number(Macro):
+    value: int

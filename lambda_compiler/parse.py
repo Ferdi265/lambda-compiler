@@ -29,6 +29,8 @@ class Token(Enum):
     Ident = auto()
     End = auto()
 
+    MacroMarker = ImplSep
+
 patterns: List[Tuple[str, Optional[Token]]] = [
     ("( |\n)+", None),
     ("=", Token.Assign),
