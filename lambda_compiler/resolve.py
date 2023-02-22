@@ -114,6 +114,7 @@ def resolve(prog: List[Statement], crate: str, externs: Optional[OrderedSet[str]
 
         body = visit_expr(lamb.body, subctx)
         captures = ctx.locals & subctx.referenced
+        captures.remove(lamb.name)
 
         ctx.referenced |= captures
 
