@@ -12,11 +12,10 @@ C_LINK      := -Wl,--gc-sections
 C_FLAGS     := $(C_OPT) $(C_SAN) $(C_INCLUDES) $(C_STD) $(C_WARN)
 
 MAIN_LL     := build/main.ll
-HLIR_SRC    := $(wildcard src/*.hlir)
-MLIR_SRC    := $(wildcard src/*.mlir)
+LANG_SRC    := $(wildcard src/*.lambda)
 C_SRC       := $(wildcard src/*.c)
 
-OBJECTS     := $(MAIN_LL:build/%.ll=build/%.ll.o) $(HLIR_SRC:src/%.hlir=build/%.ll.o) $(MLIR_SRC:src/%.mlir=build/%.ll.o) $(C_SRC:src/%.c=build/%.c.o)
+OBJECTS     := $(MAIN_LL:build/%.ll=build/%.ll.o) $(LANG_SRC:src/%.lambda=build/%.ll.o) $(C_SRC:src/%.c=build/%.c.o)
 
 .PHONY: all clean
 all: build/$(TARGET)
@@ -24,7 +23,11 @@ all: build/$(TARGET)
 clean:
 	rm -rf build
 
-build/%.mlir: src/%.hlir
+build/%.hlir: src/%.lambda
+	@mkdir -p $$(dirname $@)
+	lambda-lang2hlir -o $@ $^
+
+build/%.mlir: build/%.hlir
 	@mkdir -p $$(dirname $@)
 	lambda-hlir2mlir -o $@ $^
 
