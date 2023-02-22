@@ -3,13 +3,13 @@ extern crate io;
 
 nat2str = n ->
     std::iszero n
-        (x -> "0")
+        (x -> !"0")
         (x -> std::reverse ((std::y nat2str -> n ->
             std::iszero n
                 (x -> std::nil)
                 (x -> std::prepend
-                    (std::add (std::dec2 std::4 std::8) (std::mod n std::10))
-                    (nat2str (std::div n std::10))
+                    (std::add !48 (std::mod n !10))
+                    (nat2str (std::div n !10))
                 )
             std::ident
         ) n))
@@ -23,15 +23,15 @@ isprime = n -> (std::y isprime -> m ->
                 (x-> isprime (std::succ m))
             std::ident)
         std::ident
-    ) std::2;
+    ) !2;
 
 main = _ -> (std::y loop -> n ->
         isprime n
             (x ->
                 (io::puts (nat2str n))
-                (io::puts "\n")
+                (io::puts !"\n")
             )
             (x -> x)
         std::ident
             (loop (std::succ n))
-    ) std::2;
+    ) !2;

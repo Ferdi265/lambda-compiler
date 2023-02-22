@@ -6,9 +6,9 @@ compare = list1 -> list2 ->
 
 main = _ ->
     (compare
-        "LosCTF{Church_0bfUsC4t10n}\n"
+        !"LosCTF{Church_0bfUsC4t10n}\n"
         (io::gets std::ident)
     )
-        (x -> io::puts "ok\n")
-        (x -> io::puts "hack harder\n")
+        (x -> io::puts !"ok\n")
+        (x -> io::puts !"hack harder\n")
     std::ident;
