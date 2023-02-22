@@ -29,6 +29,12 @@ Lambda is an eagerly evaluated lambda calculus.
 - Parentheses can be used to adjust precedence:
     - `func arg -> body arg2` is equivalent to `func(lambda arg: body(arg2))` in Python
     - `func (arg -> body) arg2` is equivalent to `(func(lambda arg: body))(arg2)` in Python
+- Macros are prefixed by `!` and expand to regular calls to functions defined in `std.lambda`:
+    - `!"string"` expands to a call to `(std::list_n ...)` constructing a list
+      of numbers representing the UTF-8 bytes of the string
+    - `!42` expands to a call to `(std::dec2 ...)` or `(std::dec3 ...)` to
+      construct a number object. Number literals greater than 999 are currently
+      not supported.
 
 A Lambda program is a list of definitions that can only refer to previous
 definitions (not to themselves). This means one has to use a fixed point
