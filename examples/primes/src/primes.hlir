@@ -4,12 +4,12 @@ extern crate io;
 nat2str = n ->
     std::iszero n
         (x -> "0")
-        (x -> std::reverse ((std::y nat2str -> m ->
-            std::iszero m
+        (x -> std::reverse ((std::y nat2str -> n ->
+            std::iszero n
                 (x -> std::nil)
                 (x -> std::prepend
-                    (std::add (std::dec2 std::4 std::8) (std::mod m std::10))
-                    (nat2str (std::div m std::10))
+                    (std::add (std::dec2 std::4 std::8) (std::mod n std::10))
+                    (nat2str (std::div n std::10))
                 )
             std::ident
         ) n))
