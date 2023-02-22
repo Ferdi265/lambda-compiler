@@ -1,7 +1,7 @@
 from typing import *
 from .parse import *
 
-def parse_hlir(s: str) -> List[Statement]:
+def parse_lang(s: str) -> List[Statement]:
     tokens = tokenize(s)
     cur, curs, line, col = Token.End, "", 1, 1
 
@@ -37,6 +37,11 @@ def parse_hlir(s: str) -> List[Statement]:
         eat(Token.ParenClose)
         return chain
 
+    def parse_string() -> String:
+        s = eat(Token.String)
+        s = ast.literal_eval(s)
+        return String(s)
+
     def parse_expr() -> Expr:
         if cur == Token.ParenOpen:
             drop()
@@ -49,6 +54,8 @@ def parse_hlir(s: str) -> List[Statement]:
                 drop()
                 return Lambda(name, parse_chain())
             return Ident(name)
+        elif cur == Token.String:
+            return parse_string()
         err()
 
     def parse_chain() -> Expr:
@@ -60,13 +67,12 @@ def parse_hlir(s: str) -> List[Statement]:
 
     def parse_assignment() -> Assignment:
         name = eat(Token.Ident)
-        path = parse_path(name)
 
         eat(Token.Assign)
         value = parse_chain()
         eat(Token.SemiColon)
 
-        return PathAssignment(path, value)
+        return NameAssignment(name, value)
 
     def parse_import() -> Import:
         eat(Token.Use)

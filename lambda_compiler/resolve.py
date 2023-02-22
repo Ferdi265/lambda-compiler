@@ -31,7 +31,7 @@ class Context:
     def __copy__(self) -> Context:
         return Context(copy(self.locals), copy(self.globals), copy(self.externs), copy(self.extern_crates), OrderedSet())
 
-def resolve(prog: List[Statement], crate: str, externs: Optional[OrderedSet[str]] = None) -> List[Statement]:
+def resolve(prog: List[Statement], crate: str, externs: Optional[OrderedSet[str]] = None, keep_extern: bool = False) -> List[Statement]:
     """resolve idents into locals and globals and populate lambda captures"""
 
     def visit_program(prog: List[Statement], ctx: Context) -> List[Statement]:
@@ -56,17 +56,27 @@ def resolve(prog: List[Statement], crate: str, externs: Optional[OrderedSet[str]
             case unknown:
                 raise ResolveError(f"unexpected AST node encountered: {unknown}")
 
-    def visit_extern_crate(ext_crate: ExternCrate, ctx: Context):
+    def visit_extern_crate(ext_crate: ExternCrate, ctx: Context) -> Optional[ExternCrate]:
         if ext_crate.name in ctx.extern_crates:
             raise ResolveError(f"Redefinition of extern crate '{ext_crate.name}'")
 
         ctx.extern_crates.add(ext_crate.name)
 
-    def visit_extern(ext: Extern, ctx: Context):
+        if keep_extern:
+            return ext_crate
+        else:
+            return None
+
+    def visit_extern(ext: Extern, ctx: Context) -> Optional[Extern]:
         if ext.name in ctx.externs:
             raise ResolveError(f"Redefinition of extern '{ext.name}'")
 
         ctx.externs.add(ext.name)
+
+        if keep_extern:
+            return ext
+        else:
+            return None
 
     def visit_name_assignment(ass: NameAssignment, ctx: Context) -> Assignment:
         if ass.name in ctx.externs:

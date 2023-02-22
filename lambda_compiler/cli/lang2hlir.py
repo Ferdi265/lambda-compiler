@@ -6,11 +6,11 @@ import sys
 
 def parse_args() -> Tuple[argparse.ArgumentParser, argparse.Namespace]:
     ap = argparse.ArgumentParser(
-        description = "compile lambda HLIR to MLIR"
+        description = "compile Lambda to HLIR"
     )
 
-    ap.add_argument("input", help = "the input HLIR file", nargs = "?")
-    ap.add_argument("-o", "--output", help = "the output MLIR file")
+    ap.add_argument("input", help = "the input Lambda file", nargs = "?")
+    ap.add_argument("-o", "--output", help = "the output HLIR file")
     ap.add_argument("-c", "--crate-name", help = "set the name of the compiled crate")
     ap.add_argument("-v", "--version", action = "store_true", help = "print current version and exit")
 
@@ -42,17 +42,12 @@ def main():
     with open(infile, "r") as f:
         code = f.read()
 
-    ast = parse_hlir(code)
-    ast = resolve(ast, crate)
-    ast = rechain(ast)
-    ast = compute_continuations(ast)
-    ast = flatten_implementations(ast)
-    ast = renumber_captures(ast)
-    ast = instantiate_implementations(ast)
-    ast = dedup_implementations(ast)
+    ast = parse_lang(code)
+    ast = demacro(ast)
+    ast = resolve(ast, crate, keep_extern=True)
 
     with sys.stdout if outfile == "-" else open(outfile, "w") as f:
-        pretty_mlir(ast, file=f)
+        pretty_hlir(ast, file=f)
 
 if __name__ == "__main__":
     main()
