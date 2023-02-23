@@ -17,6 +17,10 @@ nat2str = n ->
         ) n))
     std::ident;
 
+# set function
+
+set = val -> f -> f val;
+
 # object machinery
 
 unpack = f -> list ->
@@ -65,16 +69,15 @@ rectangle = side1 -> side2 ->
 
 # main
 
-my_square = square !5;
-my_rectangle = rectangle !3 !4;
-
 main = x ->
+    set (square !5) my_square ->
     (io::puts !"square: ")
         (io::puts !"area = ")
         (io::puts (nat2str (my_square area)))
         (io::puts !", circumference = ")
         (io::puts (nat2str (my_square circumference)))
         (io::puts !"\n")
+    set (rectangle !3 !4) my_rectangle ->
     (io::puts !"rectangle: ")
         (io::puts !"area = ")
         (io::puts (nat2str (my_rectangle area)))
