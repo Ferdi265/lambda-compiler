@@ -19,6 +19,7 @@ nat2str = n ->
 
 # set function
 
+do = val -> std::ident;
 set = val -> f -> f val;
 
 # object machinery
@@ -71,17 +72,17 @@ rectangle = side1 -> side2 ->
 
 main = x ->
     set (square !5) my_square ->
-    (io::puts !"square: ")
-        (io::puts !"area = ")
-        (io::puts (nat2str (my_square area)))
-        (io::puts !", circumference = ")
-        (io::puts (nat2str (my_square circumference)))
-        (io::puts !"\n")
+    do (io::puts !"square: ")
+        do (io::puts !"area = ")
+        do (io::puts (nat2str (my_square area)))
+        do (io::puts !", circumference = ")
+        do (io::puts (nat2str (my_square circumference)))
+        do (io::puts !"\n")
     set (rectangle !3 !4) my_rectangle ->
-    (io::puts !"rectangle: ")
-        (io::puts !"area = ")
-        (io::puts (nat2str (my_rectangle area)))
-        (io::puts !", circumference = ")
-        (io::puts (nat2str (my_rectangle circumference)))
-        (io::puts !"\n")
+    do (io::puts !"rectangle: ")
+        do (io::puts !"area = ")
+        do (io::puts (nat2str (my_rectangle area)))
+        do (io::puts !", circumference = ")
+        do (io::puts (nat2str (my_rectangle circumference)))
+        do (io::puts !"\n")
     ;
