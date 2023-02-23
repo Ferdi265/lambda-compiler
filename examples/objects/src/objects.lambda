@@ -1,0 +1,84 @@
+extern crate std;
+extern crate io;
+
+# number to string machinery
+
+nat2str = n ->
+    std::iszero n
+        (x -> !"0")
+        (x -> std::reverse ((std::y nat2str -> n ->
+            std::iszero n
+                (x -> std::nil)
+                (x -> std::prepend
+                    (std::add !48 (std::mod n !10))
+                    (nat2str (std::div n !10))
+                )
+            std::ident
+        ) n))
+    std::ident;
+
+# object machinery
+
+unpack = f -> list ->
+    std::foldl (f -> el -> f el) f list;
+
+make_object = methods -> private ->
+    std::y (this -> method_selector ->
+        unpack method_selector methods
+            this private
+    );
+
+ignore = ignored -> value ->
+    std::y (this -> ignored ->
+        std::iszero ignored
+            value
+            _ -> this (std::pred ignored)
+    ) ignored;
+
+selector = index -> length ->
+    ignore index (ignore (std::pred (std::sub length index)));
+
+# square / rectangle
+
+area = selector !0 !2;
+circumference = selector !1 !2;
+
+square = side ->
+    make_object
+        (std::list_n !2
+            # area
+            (this -> side -> std::mul side side)
+            # circumference
+            (this -> side -> std::mul side !4)
+        )
+        side;
+
+rectangle = side1 -> side2 ->
+    make_object
+        (std::list_n !2
+            # area
+            (this -> sides -> std::mul (std::1st sides) (std::2nd sides))
+            # circumference
+            (this -> sides -> std::add (std::mul (std::1st sides) !2) (std::mul (std::2nd sides) !2))
+        )
+        (std::pair side1 side2);
+
+# main
+
+my_square = square !5;
+my_rectangle = rectangle !3 !4;
+
+main = x ->
+    (io::puts !"square: ")
+        (io::puts !"area = ")
+        (io::puts (nat2str (my_square area)))
+        (io::puts !", circumference = ")
+        (io::puts (nat2str (my_square circumference)))
+        (io::puts !"\n")
+    (io::puts !"rectangle: ")
+        (io::puts !"area = ")
+        (io::puts (nat2str (my_rectangle area)))
+        (io::puts !", circumference = ")
+        (io::puts (nat2str (my_rectangle circumference)))
+        (io::puts !"\n")
+    ;
