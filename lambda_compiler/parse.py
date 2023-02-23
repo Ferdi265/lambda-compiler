@@ -33,6 +33,7 @@ class Token(Enum):
 
 patterns: List[Tuple[str, Optional[Token]]] = [
     ("( |\n)+", None),
+    ("#[^\n]*", None),
     ("=", Token.Assign),
     (";", Token.SemiColon),
     (r"\(", Token.ParenOpen),
