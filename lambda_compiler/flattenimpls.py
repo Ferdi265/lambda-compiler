@@ -19,6 +19,7 @@ class Implementation(Statement):
     arg_literal: Optional[ValueLiteral]
     ident_captures: List[str]
     anonymous_captures: List[int]
+    is_public: bool
 
 @dataclass
 class ReturnImplementation(Implementation):
@@ -43,17 +44,18 @@ class FlattenImplsContext:
     current_assignment: Optional[Path] = None
     current_lambda_id: int = field(default_factory = int)
     implementations: List[Implementation] = field(default_factory = list)
+    is_public: bool = False
 
     def lambda_context(self, arg_name: Optional[str]) -> LambdaContext:
         id = self.current_lambda_id
         self.current_lambda_id += 1
-        return LambdaContext(self, arg_name, id)
+        return LambdaContext(self, arg_name, id, self.is_public and id == 0)
 
     def implementation_literal(self, lambda_id: int, continuation_id: int, arg_name: Optional[ValueLiteral], ident_captures: List[str], anonymous_captures: List[int]) -> ImplementationLiteral:
         assert self.current_assignment is not None
         return ImplementationLiteral(Implementation(
             self.current_assignment, lambda_id, continuation_id,
-            arg_name, ident_captures, anonymous_captures
+            arg_name, ident_captures, anonymous_captures, False
         ))
 
 I = TypeVar("I", bound = Implementation)
@@ -63,6 +65,7 @@ class LambdaContext:
     ctx: FlattenImplsContext
     arg_name: Optional[str]
     lambda_id: int
+    is_public: bool
     current_continuation_id: int = field(default_factory = int)
 
     def next_continuation_id(self) -> int:
@@ -83,7 +86,7 @@ class LambdaContext:
             arg_lit = AnonymousLiteral(continuation_id - 1)
 
         assert self.ctx.current_assignment is not None
-        return self.ctx.current_assignment, self.lambda_id, continuation_id, arg_lit, [], []
+        return self.ctx.current_assignment, self.lambda_id, continuation_id, arg_lit, [], [], self.is_public
 
     def _append(self, impl: I) -> I:
         self.ctx.implementations.append(impl)
@@ -117,6 +120,7 @@ def flatten_implementations(prog: List[Statement]) -> List[Statement]:
     def visit_assignment(ass: ContinuationAssignment, ctx: FlattenImplsContext):
         ctx.current_assignment = ass.path
         ctx.current_lambda_id = 0
+        ctx.is_public = ass.is_public
         visit_continuation_chain(ass.value, ctx, OrderedSet(), None)
 
     def visit_continuation_chain(chain: ContinuationChain, ctx: FlattenImplsContext, ident_captures: OrderedSet[str], arg_name: Optional[str]) -> int:

@@ -42,8 +42,9 @@ def pretty_mlir(prog: List[Statement], file: TextIO = sys.stdout):
 
     def visit_instance_definition(inst_def: InstanceDefinition):
         inst = inst_def.inst
+        is_public_str = "pub " if inst_def.is_public else ""
         init_tag = " $$" if inst_def.needs_init else ""
-        print(f"pub {inst_def.path} = {inst.path}%{inst.inst_id}{init_tag};", file=file)
+        print(f"{is_public_str}{inst_def.path} = {inst.path}%{inst.inst_id}{init_tag};", file=file)
 
     def visit_literal(lit: ValueLiteral) -> str:
         match lit:

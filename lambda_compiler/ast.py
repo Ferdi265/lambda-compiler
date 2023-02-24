@@ -42,6 +42,11 @@ class Extern(Statement):
     name: str
 
 @dataclass
+class Mod(Statement):
+    name: str
+    is_public: bool
+
+@dataclass
 class Assignment(Statement):
     pass
 
@@ -49,16 +54,21 @@ class Assignment(Statement):
 class NameAssignment(Assignment):
     name: str
     value: Expr
+    is_public: bool
+    is_impure: bool
 
 @dataclass
 class PathAssignment(Assignment):
     path: Path
     value: Expr
+    is_public: bool
+    is_impure: bool
 
 @dataclass
 class Import(Statement):
     path: Path
     name: Optional[str]
+    is_public: bool
 
 @dataclass
 class Paren(Expr):

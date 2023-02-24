@@ -84,7 +84,11 @@ def parse_mlir(s: str) -> List[Statement]:
         return impl_table[(impl_path, lambda_id, continuation_id)]
 
     def parse_def() -> InstanceDefinition:
-        eat(Token.Pub)
+        is_public = False
+        if cur == Token.Pub:
+            eat()
+            is_public = True
+
         path = parse_path()
         eat(Token.Assign)
 
@@ -96,7 +100,7 @@ def parse_mlir(s: str) -> List[Statement]:
             needs_init = True
 
         eat(Token.SemiColon)
-        return InstanceDefinition(path, inst, needs_init)
+        return InstanceDefinition(path, inst, needs_init, is_public)
 
     def parse_inst() -> Instance:
         eat(Token.Inst)
@@ -144,7 +148,7 @@ def parse_mlir(s: str) -> List[Statement]:
                 impl_captures.append(id)
             eat(Token.CaptureClose)
 
-            impl = Implementation(impl_path, lambda_id, continuation_id, AnonymousLiteral(0), [], impl_captures)
+            impl = Implementation(impl_path, lambda_id, continuation_id, AnonymousLiteral(0), [], impl_captures, False)
             return ImplementationLiteral(impl)
         else:
             return PathLiteral(PathGlobal(path))
@@ -167,8 +171,8 @@ def parse_mlir(s: str) -> List[Statement]:
         captures.remove(0)
 
         eat(Token.SemiColon)
-        impl_metadata: Tuple[Path, int, int, ValueLiteral, List[str], List[int]] = (
-            impl_path, lambda_id, continuation_id, AnonymousLiteral(0), [], list(captures)
+        impl_metadata: Tuple[Path, int, int, ValueLiteral, List[str], List[int], bool] = (
+            impl_path, lambda_id, continuation_id, AnonymousLiteral(0), [], list(captures), False
         )
         impl: Implementation
         match (a, b, c):
@@ -185,14 +189,12 @@ def parse_mlir(s: str) -> List[Statement]:
         return impl
 
     def parse_statement() -> Statement:
-        if cur == Token.Pub:
-            return parse_def()
-        elif cur == Token.Impl:
+        if cur == Token.Impl:
             return parse_impl()
         elif cur == Token.Inst:
             return parse_inst()
         else:
-            err()
+            return parse_def()
 
     def parse_prog() -> List[Statement]:
         statements: List[Statement] = []

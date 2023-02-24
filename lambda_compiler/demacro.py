@@ -54,10 +54,8 @@ def demacro(prog: List[Statement]) -> List[Statement]:
 
     def visit_statement(stmt: Statement) -> Statement:
         match stmt:
-            case NameAssignment(name, value):
-                return NameAssignment(name, visit_expr(value))
-            case PathAssignment(path, value):
-                return PathAssignment(path, visit_expr(value))
+            case NameAssignment(name, value, is_public, is_impure) as ass:
+                return NameAssignment(name, visit_expr(value), is_public, is_impure)
 
         return stmt
 

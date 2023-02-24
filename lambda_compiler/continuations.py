@@ -39,6 +39,7 @@ class Continuation:
 class ContinuationAssignment(Assignment):
     path: Path
     value: ContinuationChain
+    is_public: bool
 
 @dataclass
 class ContinuationChain(Expr):
@@ -81,7 +82,7 @@ def compute_continuations(prog: List[Statement]) -> List[Statement]:
         chain = make_continuation_chain(ass.value)
         visit_continuation_chain(chain, None)
 
-        return ContinuationAssignment(ass.path, chain)
+        return ContinuationAssignment(ass.path, chain, ass.is_public)
 
     def make_continuation_chain(expr: Expr) -> ContinuationChain:
         ctx = ComputeContinuationsContext()

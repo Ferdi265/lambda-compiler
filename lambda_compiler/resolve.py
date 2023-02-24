@@ -89,7 +89,7 @@ def resolve(prog: List[Statement], crate: str, externs: Optional[OrderedSet[str]
         value = visit_expr(ass.value, copy(ctx))
 
         ctx.globals.add(path)
-        return PathAssignment(path, value)
+        return PathAssignment(path, value, ass.is_public, ass.is_impure)
 
     def visit_path_assignment(ass: PathAssignment, ctx: Context) -> Assignment:
         if ass.path in ctx.globals:
@@ -101,7 +101,7 @@ def resolve(prog: List[Statement], crate: str, externs: Optional[OrderedSet[str]
         value = visit_expr(ass.value, copy(ctx))
 
         ctx.globals.add(ass.path)
-        return PathAssignment(ass.path, value)
+        return PathAssignment(ass.path, value, ass.is_public, ass.is_impure)
 
     def visit_expr(expr: Expr, ctx: Context) -> Expr:
         match expr:

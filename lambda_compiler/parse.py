@@ -19,6 +19,8 @@ class Token(Enum):
     CaptureOpen = auto()
     CaptureClose = auto()
     Pub = auto()
+    Impure = auto()
+    Mod = auto()
     Use = auto()
     As = auto()
     Extern = auto()
@@ -47,6 +49,8 @@ patterns: List[Tuple[str, Optional[Token]]] = [
     (r"\[", Token.CaptureOpen),
     (r"\]", Token.CaptureClose),
     ("pub", Token.Pub),
+    ("impure", Token.Impure),
+    ("mod", Token.Mod),
     ("use", Token.Use),
     ("as", Token.As),
     ("extern", Token.Extern),

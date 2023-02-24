@@ -16,6 +16,7 @@ class InstanceDefinition(Statement):
     path: Path
     inst: Instance
     needs_init: bool
+    is_public: bool
 
 @dataclass
 class InstanceLiteral(ValueLiteral):
@@ -86,7 +87,7 @@ class InstantiateContext:
             inst = self.resolve_impl_inst(impl)
             needs_init = True
 
-        inst_def = InstanceDefinition(impl.path, inst, needs_init)
+        inst_def = InstanceDefinition(impl.path, inst, needs_init, impl.is_public)
         self.definitions.append(inst_def)
         self.def_table[impl.path] = inst_def
 

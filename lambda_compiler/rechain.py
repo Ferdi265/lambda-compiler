@@ -24,10 +24,8 @@ def rechain(prog: List[Statement]) -> List[Statement]:
 
     def visit_statement(stmt: Statement) -> Statement:
         match stmt:
-            case NameAssignment(name, value):
-                return NameAssignment(name, visit_chain(value))
-            case PathAssignment(path, value):
-                return PathAssignment(path, visit_chain(value))
+            case PathAssignment(path, value, is_public, is_impure):
+                return PathAssignment(path, visit_chain(value), is_public, is_impure)
             case _:
                 raise RechainError(f"unexpected AST node encountered: {stmt}")
 

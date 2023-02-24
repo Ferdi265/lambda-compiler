@@ -84,7 +84,8 @@ def renumber_captures(prog: List[Statement]) -> List[Statement]:
                         impl_ref.continuation_id,
                         None,
                         [],
-                        new_impl_captures
+                        new_impl_captures,
+                        False
                     )
                     return ImplementationLiteral(new_impl_ref)
                 case _:

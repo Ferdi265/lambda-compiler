@@ -85,16 +85,21 @@ def parse_lang(s: str) -> List[Statement]:
             prev = Call(prev, expr)
         return prev
 
-    def parse_assignment() -> Assignment:
+    def parse_assignment(is_public: bool) -> Assignment:
+        is_impure = False
+        if cur == Token.Impure:
+            eat()
+            is_impure = True
+
         name = eat(Token.Ident)
 
         eat(Token.Assign)
         value = parse_chain()
         eat(Token.SemiColon)
 
-        return NameAssignment(name, value)
+        return NameAssignment(name, value, is_public, is_impure)
 
-    def parse_import() -> Import:
+    def parse_import(is_public: bool) -> Import:
         eat(Token.Use)
 
         base = eat(Token.Ident)
@@ -106,32 +111,53 @@ def parse_lang(s: str) -> List[Statement]:
             name = eat(Token.Ident)
 
         eat(Token.SemiColon)
-        return Import(path, name)
+        return Import(path, name, is_public)
+
+    def parse_mod(is_public: bool) -> Mod:
+        name = eat(Token.Ident)
+
+        eat(Token.SemiColon)
+        return Mod(name, is_public)
+
+    def parse_extern_crate() -> ExternCrate:
+        eat(Token.Crate)
+        name = eat(Token.Ident)
+        eat(Token.SemiColon)
+
+        return ExternCrate(name)
+
+    def parse_extern_impure() -> Extern:
+        eat(Token.Impure)
+        name = eat(Token.Ident)
+        eat(Token.SemiColon)
+
+        return Extern(name)
 
     def parse_extern() -> Statement:
         eat(Token.Extern)
 
-        stmt: Statement
         if cur == Token.Crate:
-            eat()
-            name = eat(Token.Ident)
-            stmt = ExternCrate(name)
-        elif cur == Token.Ident:
-            name = eat()
-            stmt = Extern(name)
+            return parse_extern_crate()
+        elif cur == Token.Impure:
+            return parse_extern_impure()
         else:
             err()
 
-        eat(Token.SemiColon)
-        return stmt
-
     def parse_statement() -> Statement:
-        if cur == Token.Use:
-            return parse_import()
-        elif cur == Token.Extern:
+        if cur == Token.Extern:
             return parse_extern()
+
+        is_public = False
+        if cur == Token.Pub:
+            eat()
+            is_public = True
+
+        if cur == Token.Use:
+            return parse_import(is_public)
+        elif cur == Token.Mod:
+            return parse_mod(is_public)
         else:
-            return parse_assignment()
+            return parse_assignment(is_public)
 
     def parse_prog() -> List[Statement]:
         statements: List[Statement] = []

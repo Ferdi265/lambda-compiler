@@ -59,7 +59,8 @@ class DedupImplementationsContext:
                 dedup_impl, hash_value = self.dedup_impl(impl)
                 lit.impl = Implementation(
                     dedup_impl.path, dedup_impl.lambda_id, dedup_impl.continuation_id,
-                    impl.arg_literal, impl.ident_captures, impl.anonymous_captures
+                    impl.arg_literal, impl.ident_captures, impl.anonymous_captures,
+                    False
                 )
                 return ("impl", hash_value, tuple(impl.anonymous_captures))
             case InstanceLiteral(inst):

@@ -379,7 +379,8 @@ def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
     def visit_definition(inst_def: InstanceDefinition, ctx: GenerateLLIRContext):
         ctx.llir += f"@{ctx.mangle_def(inst_def)} = "
 
-        # TODO: visibility
+        if not inst_def.is_public:
+            ctx.llir += "internal "
 
         ctx.llir += "dso_local global %lambda* "
 
