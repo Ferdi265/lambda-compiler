@@ -13,20 +13,28 @@ def pretty_hlir(prog: List[Statement], file: TextIO = sys.stdout, stub: bool = F
             case ExternCrate(crate):
                 print(f"extern crate {crate};", file=file)
             case Extern(name):
+                if stub:
+                    return
                 print(f"extern impure {name};", file=file)
             case NameAssignment(name, value, is_public, is_impure):
+                if stub and not is_public:
+                    return
                 is_public_str = "pub " if is_public else ""
                 is_impure_str = "impure " if is_impure else ""
                 print(f"{is_public_str}{is_impure_str}{name} = ", end="", file=file)
                 visit_expr(value)
                 print(";", file=file)
             case PathAssignment(path, value, is_public, is_impure):
+                if stub and not is_public:
+                    return
                 is_public_str = "pub " if is_public else ""
                 is_impure_str = "impure " if is_impure else ""
                 print(f"{is_public_str}{is_impure_str}{path} = ", end="", file=file)
                 visit_expr(value)
                 print(";", file=file)
             case PathAlias(path, value, is_public):
+                if stub and not is_public:
+                    return
                 is_public_str = "pub " if is_public else ""
                 print(f"{is_public_str}{path} = use {value};", file=file)
             case _:
