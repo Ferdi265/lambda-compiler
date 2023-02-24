@@ -10,7 +10,7 @@ nat2str = n ->
             std::iszero n
                 (x -> std::nil)
                 (x -> std::prepend
-                    (std::add !48 (std::mod n !10))
+                    (std::add !48 (std::rem n !10))
                     (nat2str (std::div n !10))
                 )
             std::ident
@@ -70,7 +70,7 @@ rectangle = side1 -> side2 ->
 
 # main
 
-main = x ->
+pub impure main = x ->
     set (square !5) my_square ->
     do (io::puts !"square: ")
         do (io::puts !"area = ")

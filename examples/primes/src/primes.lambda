@@ -25,7 +25,7 @@ isprime = n -> (std::y isprime -> m ->
         std::ident
     ) !2;
 
-main = _ -> (std::y loop -> n ->
+pub impure main = _ -> (std::y loop -> n ->
         isprime n
             (x ->
                 (io::puts (nat2str n))

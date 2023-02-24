@@ -1,7 +1,7 @@
 extern crate std;
 extern crate io;
 
-main = _ -> std::while
+pub impure main = _ -> std::while
     (c -> std::not (std::equal c io::eof))
     (c -> io::getc (io::putc c))
     (io::getc std::ident);
