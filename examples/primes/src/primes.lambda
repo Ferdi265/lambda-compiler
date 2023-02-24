@@ -8,7 +8,7 @@ nat2str = n ->
             std::iszero n
                 (x -> std::nil)
                 (x -> std::prepend
-                    (std::add !48 (std::mod n !10))
+                    (std::add !48 (std::rem n !10))
                     (nat2str (std::div n !10))
                 )
             std::ident
@@ -18,7 +18,7 @@ nat2str = n ->
 isprime = n -> (std::y isprime -> m ->
         std::equal n m
             (x -> std::true)
-            (x -> std::iszero (std::mod n m)
+            (x -> std::iszero (std::rem n m)
                 (x -> std::false)
                 (x-> isprime (std::succ m))
             std::ident)

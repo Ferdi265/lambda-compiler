@@ -62,7 +62,7 @@ divmod = a -> b -> y (div -> acc -> r ->
     ) a zero;
 
 div = a -> b -> 1st (divmod a b);
-mod = a -> b -> 2nd (divmod a b);
+rem = a -> b -> 2nd (divmod a b);
 
 0 = zero;
 1 = succ 0;
