@@ -12,7 +12,8 @@ def parse_args() -> Tuple[argparse.ArgumentParser, argparse.Namespace]:
     ap.add_argument("input", help = "the input Lambda file", nargs = "?")
     ap.add_argument("-o", "--output", help = "the output HLIR file")
     ap.add_argument("-c", "--crate-name", help = "set the name of the compiled crate")
-    ap.add_argument("-v", "--version", action = "store_true", help = "print current version and exit")
+    ap.add_argument("-s", "--stub", action = "store_true", default=False, help = "generate interface stub instead of full HLIR")
+    ap.add_argument("-v", "--version", action = "store_true", default=False, help = "print current version and exit")
 
     return ap, ap.parse_args()
 
@@ -44,10 +45,10 @@ def main():
 
     ast = parse_lang(code)
     ast = demacro(ast)
-    ast = resolve(ast, crate, keep_extern=True)
+    ast = resolve(ast, crate)
 
     with sys.stdout if outfile == "-" else open(outfile, "w") as f:
-        pretty_hlir(ast, file=f)
+        pretty_hlir(ast, file=f, stub=args.stub)
 
 if __name__ == "__main__":
     main()

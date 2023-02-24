@@ -1,7 +1,7 @@
 from typing import *
 from .parse import *
 
-def parse_hlir(s: str) -> List[Statement]:
+def parse_hlir(s: str, stub: bool = False) -> List[Statement]:
     tokens = tokenize(s)
     cur, curs, line, col = Token.End, "", 1, 1
 
@@ -21,8 +21,9 @@ def parse_hlir(s: str) -> List[Statement]:
         drop()
         return cs
 
-    def err() -> NoReturn:
-        raise ParseError(f"parse error at line {line} col {col}: ({cur}, '{curs}')")
+    def err(s: Optional[str] = None) -> NoReturn:
+        msg = f": {s}" if s is not None else ""
+        raise ParseError(f"parse error at line {line} col {col}: ({cur}, '{curs}'){msg}")
 
     def parse_path(crate: str) -> Path:
         components = [crate]
@@ -38,18 +39,29 @@ def parse_hlir(s: str) -> List[Statement]:
         return chain
 
     def parse_expr() -> Expr:
-        if cur == Token.ParenOpen:
+        expr: Expr
+        if cur == Token.Ellipsis and stub:
+            eat()
+            expr = EllipsisExpr()
+        elif cur == Token.ParenOpen:
             drop()
-            return parse_paren()
+            expr = parse_paren()
         elif cur == Token.Ident:
             name = eat()
             if cur == Token.PathSep:
-                return PathExpr(parse_path(name))
+                expr = PathExpr(parse_path(name))
             elif cur == Token.Arrow:
                 drop()
-                return Lambda(name, parse_chain())
-            return Ident(name)
-        err()
+                expr = Lambda(name, parse_chain())
+            else:
+                expr = Ident(name)
+        else:
+            err()
+
+        if stub:
+            expr = EllipsisExpr()
+
+        return expr
 
     def parse_chain() -> Expr:
         prev = parse_expr()
@@ -68,10 +80,22 @@ def parse_hlir(s: str) -> List[Statement]:
         path = parse_path(name)
 
         eat(Token.Assign)
-        value = parse_chain()
-        eat(Token.SemiColon)
 
-        return PathAssignment(path, value, is_public, is_impure)
+        if cur == Token.Use:
+            if not is_public:
+                err("alias definitions must be public")
+            if is_impure:
+                err("alias definitions cannot be impure")
+
+            eat()
+            alias_name = eat(Token.Ident)
+            alias_path = parse_path(name)
+            eat(Token.SemiColon)
+            return PathAlias(path, alias_path, is_public)
+        else:
+            value = parse_chain()
+            eat(Token.SemiColon)
+            return PathAssignment(path, value, is_public, is_impure)
 
     def parse_extern_crate() -> ExternCrate:
         eat(Token.Crate)

@@ -4,7 +4,7 @@ import sys
 class PrettyHLIRError(Exception):
     pass
 
-def pretty_hlir(prog: List[Statement], file: TextIO = sys.stdout):
+def pretty_hlir(prog: List[Statement], file: TextIO = sys.stdout, stub: bool = False):
     def visit_program(prog: List[Statement]) -> List[Statement]:
         return [visit_statement(stmt) for stmt in prog]
 
@@ -26,10 +26,17 @@ def pretty_hlir(prog: List[Statement], file: TextIO = sys.stdout):
                 print(f"{is_public_str}{is_impure_str}{path} = ", end="", file=file)
                 visit_expr(value)
                 print(";", file=file)
+            case PathAlias(path, value, is_public):
+                is_public_str = "pub " if is_public else ""
+                print(f"{is_public_str}{path} = use {value};", file=file)
             case _:
                 raise PrettyHLIRError(f"unexpected AST node encountered: {stmt}")
 
     def visit_expr(expr: Expr):
+        if stub:
+            print("...", end="", file=file)
+            return
+
         match expr:
             case Paren(inner):
                 print("(", end="", file=file)

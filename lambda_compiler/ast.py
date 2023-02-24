@@ -65,10 +65,20 @@ class PathAssignment(Assignment):
     is_impure: bool
 
 @dataclass
+class PathAlias(Assignment):
+    path: Path
+    value: Path
+    is_public: bool
+
+@dataclass
 class Import(Statement):
     path: Path
     name: Optional[str]
     is_public: bool
+
+@dataclass
+class EllipsisExpr(Expr):
+    pass
 
 @dataclass
 class Paren(Expr):

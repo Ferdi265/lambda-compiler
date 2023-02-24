@@ -31,7 +31,7 @@ class Context:
     def __copy__(self) -> Context:
         return Context(copy(self.locals), copy(self.globals), copy(self.externs), copy(self.extern_crates), OrderedSet())
 
-def resolve(prog: List[Statement], crate: str, externs: Optional[OrderedSet[str]] = None, keep_extern: bool = False) -> List[Statement]:
+def resolve(prog: List[Statement], crate: str, externs: Optional[OrderedSet[str]] = None) -> List[Statement]:
     """resolve idents into locals and globals and populate lambda captures"""
 
     def visit_program(prog: List[Statement], ctx: Context) -> List[Statement]:
@@ -49,34 +49,47 @@ def resolve(prog: List[Statement], crate: str, externs: Optional[OrderedSet[str]
                 return visit_extern_crate(ext_crate, ctx)
             case Extern() as ext:
                 return visit_extern(ext, ctx)
+            case Import() as imp:
+                return visit_import(imp, ctx)
             case NameAssignment() as ass:
                 return visit_name_assignment(ass, ctx)
             case PathAssignment() as ass:
                 return visit_path_assignment(ass, ctx)
+            case PathAlias() as alias:
+                return alias
             case unknown:
                 raise ResolveError(f"unexpected AST node encountered: {unknown}")
 
-    def visit_extern_crate(ext_crate: ExternCrate, ctx: Context) -> Optional[ExternCrate]:
+    def visit_import(imp: Import, ctx: Context) -> Optional[Statement]:
+        if imp.path.components[0] not in ctx.extern_crates:
+            raise ResolveError(f"Import from undefined extern crate '{imp.path}'")
+
+        # TODO: handle this properly
+
+        name = imp.name
+        if name is None:
+            name = imp.path.components[-1]
+
+        path = Path(()) / crate / name
+
+        if imp.is_public:
+            return PathAlias(path, imp.path, imp.is_public)
+        else:
+            return None
+
+    def visit_extern_crate(ext_crate: ExternCrate, ctx: Context) -> ExternCrate:
         if ext_crate.name in ctx.extern_crates:
             raise ResolveError(f"Redefinition of extern crate '{ext_crate.name}'")
 
         ctx.extern_crates.add(ext_crate.name)
-
-        if keep_extern:
-            return ext_crate
-        else:
-            return None
+        return ext_crate
 
     def visit_extern(ext: Extern, ctx: Context) -> Optional[Extern]:
         if ext.name in ctx.externs:
             raise ResolveError(f"Redefinition of extern '{ext.name}'")
 
         ctx.externs.add(ext.name)
-
-        if keep_extern:
-            return ext
-        else:
-            return None
+        return ext
 
     def visit_name_assignment(ass: NameAssignment, ctx: Context) -> Assignment:
         if ass.name in ctx.externs:

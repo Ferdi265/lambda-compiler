@@ -20,10 +20,22 @@ class RechainError(Exception):
 
 def rechain(prog: List[Statement]) -> List[Statement]:
     def visit_program(prog: List[Statement]) -> List[Statement]:
-        return [visit_statement(stmt) for stmt in prog]
+        statements = []
+        for stmt in prog:
+            new_stmt = visit_statement(stmt)
+            if new_stmt is not None:
+                statements.append(new_stmt)
 
-    def visit_statement(stmt: Statement) -> Statement:
+        return statements
+
+    def visit_statement(stmt: Statement) -> Optional[Statement]:
         match stmt:
+            case ExternCrate():
+                return None
+            case Extern():
+                return None
+            case PathAlias():
+                return None
             case PathAssignment(path, value, is_public, is_impure):
                 return PathAssignment(path, visit_chain(value), is_public, is_impure)
             case _:
