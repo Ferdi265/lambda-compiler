@@ -16,6 +16,7 @@ setup(
     entry_points = {
         "console_scripts": [
             "lambda-lang2hlir=lambda_compiler.cli.lang2hlir:main",
+            "lambda-hlir2hlis=lambda_compiler.cli.hlir2hlis:main",
             "lambda-hlir2mlir=lambda_compiler.cli.hlir2mlir:main",
             "lambda-mlir2llir=lambda_compiler.cli.mlir2llir:main",
             "lambda-llir2main=lambda_compiler.cli.llir2main:main",
