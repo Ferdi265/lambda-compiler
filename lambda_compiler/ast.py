@@ -73,7 +73,7 @@ class PathAlias(Assignment):
 @dataclass
 class Import(Statement):
     path: Path
-    name: Optional[str]
+    name: str
     is_public: bool
 
 @dataclass

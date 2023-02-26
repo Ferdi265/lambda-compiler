@@ -105,10 +105,12 @@ def parse_lang(s: str) -> List[Statement]:
         base = eat(Token.Ident)
         path = parse_path(base)
 
-        name: Optional[str] = None
+        name: str
         if cur == Token.As:
             eat()
             name = eat(Token.Ident)
+        else:
+            name = path.components[-1]
 
         eat(Token.SemiColon)
         return Import(path, name, is_public)

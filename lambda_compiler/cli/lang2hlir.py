@@ -10,6 +10,7 @@ def parse_args() -> Tuple[argparse.ArgumentParser, argparse.Namespace]:
     )
 
     ap.add_argument("input", help = "the input Lambda file", nargs = "?")
+    ap.add_argument("deps", help = "dependency crate HLIR files", nargs = "*")
     ap.add_argument("-o", "--output", help = "the output HLIR file")
     ap.add_argument("-c", "--crate-name", help = "set the name of the compiled crate")
     ap.add_argument("-s", "--stub", action = "store_true", default=False, help = "generate interface stub instead of full HLIR")
@@ -40,12 +41,9 @@ def main():
     if outfile is None:
         outfile = os.path.join(infile_dir, infile_name + ".mlir")
 
-    with open(infile, "r") as f:
-        code = f.read()
-
-    ast = parse_lang(code)
+    loader = FileListLoader(args.deps)
+    ast = collect_crate(infile, crate, loader)
     ast = demacro(ast)
-    ast = resolve(ast, crate)
 
     with sys.stdout if outfile == "-" else open(outfile, "w") as f:
         pretty_hlir(ast, file=f, stub=args.stub)

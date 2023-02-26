@@ -11,7 +11,6 @@ def parse_args() -> Tuple[argparse.ArgumentParser, argparse.Namespace]:
 
     ap.add_argument("input", help = "the input HLIR file", nargs = "?")
     ap.add_argument("-o", "--output", help = "the output MLIR file")
-    ap.add_argument("-c", "--crate-name", help = "set the name of the compiled crate")
     ap.add_argument("-v", "--version", action = "store_true", help = "print current version and exit")
 
     return ap, ap.parse_args()
@@ -31,10 +30,6 @@ def main():
     infile_dir = os.path.dirname(infile)
     infile_name = os.path.basename(infile).split(".", 1)[0]
 
-    crate = args.crate_name
-    if crate is None:
-        crate = infile_name
-
     outfile = args.output
     if outfile is None:
         outfile = os.path.join(infile_dir, infile_name + ".mlir")
@@ -43,7 +38,7 @@ def main():
         code = f.read()
 
     ast = parse_hlir(code)
-    ast = resolve(ast, crate)
+    ast = resolve(ast)
     ast = rechain(ast)
     ast = compute_continuations(ast)
     ast = flatten_implementations(ast)
