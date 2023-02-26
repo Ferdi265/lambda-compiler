@@ -177,12 +177,14 @@ def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace) -> Li
         statements = []
         for stmt in prog:
             new_stmt = visit_statement(stmt, mod)
-            if new_stmt is not None:
+            if isinstance(new_stmt, list):
+                statements += new_stmt
+            elif new_stmt is not None:
                 statements.append(new_stmt)
 
         return statements
 
-    def visit_statement(stmt: Statement, mod: ModuleNamespace) -> Optional[Statement]:
+    def visit_statement(stmt: Statement, mod: ModuleNamespace) -> Union[Optional[Statement], List[Statement]]:
         match stmt:
             case ExternCrate() as ext_crate:
                 return visit_extern_crate(ext_crate, mod)
@@ -206,8 +208,8 @@ def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace) -> Li
         mod.insert_entry(extern.name, ExternEntry(abs_path, False, extern.name))
         return extern
 
-    def visit_module(submod: Mod, mod: ModuleNamespace):
-        collect(mod.insert_submod(submod.name, submod.is_public, loader))
+    def visit_module(submod: Mod, mod: ModuleNamespace) -> List[Statement]:
+        return collect(mod.insert_submod(submod.name, submod.is_public, loader))
 
     def visit_import(imp: Import, mod: ModuleNamespace) -> Optional[PathAlias]:
         abs_path = mod.path / imp.name
@@ -239,7 +241,7 @@ def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace) -> Li
     def visit_expr(expr: Expr, mod: ModuleNamespace, ctx: CollectExprContext) -> Expr:
         match expr:
             case Paren(expr):
-                return visit_expr(expr, mod, ctx)
+                return Paren(visit_expr(expr, mod, ctx))
             case Call(fn, arg):
                 return Call(
                     visit_expr(fn, mod, ctx),
