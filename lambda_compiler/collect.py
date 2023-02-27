@@ -46,9 +46,20 @@ class Definition(NamespaceEntry):
     is_impure: bool
 
 @dataclass
+class CrateInfo:
+    name: str
+    src: str
+    dir: str
+    owns_dir: bool
+
+@dataclass
 class Loader(ABC):
     @abstractmethod
-    def load_crate(self, crate: str) -> ModuleNamespace:
+    def initial_crate_name_and_dir(self, file_path: str) -> CrateInfo:
+        ...
+
+    @abstractmethod
+    def load_crate(self, parent: RootNamespace, crate: str) -> ModuleNamespace:
         ...
 
     @abstractmethod
@@ -57,6 +68,8 @@ class Loader(ABC):
 
 @dataclass
 class RootNamespace:
+    main_crate: str
+    blacklist_crates: OrderedSet[str] = field(default_factory = OrderedSet)
     crates: Dict[str, ModuleNamespace] = field(default_factory = dict)
 
     def insert_crate(self, crate: ModuleNamespace):
@@ -104,6 +117,7 @@ class ModuleNamespace:
     path: Path
     src: str
     dir: str
+    owns_dir: bool = False
 
     entries: Dict[str, NamespaceEntry] = field(default_factory = dict)
 
@@ -200,7 +214,7 @@ def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace) -> Li
                 raise CollectCrateError(f"unexpected AST node encountered: {stmt}")
 
     def visit_extern_crate(ext_crate: ExternCrate, mod: ModuleNamespace) -> ExternCrate:
-        root.insert_crate(loader.load_crate(ext_crate.name))
+        root.insert_crate(loader.load_crate(root, ext_crate.name))
         return ext_crate
 
     def visit_extern(extern: Extern, mod: ModuleNamespace) -> Extern:
@@ -300,13 +314,22 @@ def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace) -> Li
 
     return collect(mod)
 
-def collect_crate(crate_src: str, crate_name: str, loader: Loader, namespace: Optional[RootNamespace] = None) -> List[Statement]:
+def collect_crate_from_hlis(file_path: str, loader: Loader, namespace: RootNamespace):
+    raise CollectCrateError("HLIS collection not implemented")
+
+def collect_crate(file_path: str, loader: Loader, namespace: Optional[RootNamespace] = None) -> List[Statement]:
+    crate_info = loader.initial_crate_name_and_dir(file_path)
+    crate_name = crate_info.name
+    crate_dir = crate_info.dir
+    crate_src = crate_info.src
+    owns_dir = crate_info.owns_dir
+
     if namespace is None:
-        root = RootNamespace()
+        root = RootNamespace(crate_name)
     else:
         root = namespace
+    root.blacklist_crates.add(crate_name)
 
-    crate_dir = os.path.dirname(crate_src)
-    crate = ModuleNamespace(root, None, Path(()) / crate_name, crate_src, crate_dir)
+    crate = ModuleNamespace(root, None, Path(()) / crate_name, crate_src, crate_dir, owns_dir)
     root.insert_crate(crate)
     return collect_mod(crate, loader, root)

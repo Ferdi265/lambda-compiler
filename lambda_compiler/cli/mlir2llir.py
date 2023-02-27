@@ -39,7 +39,7 @@ def main():
 
     outfile = args.output
     if outfile is None:
-        outfile = os.path.join(infile_dir, infile_name + ".mlir")
+        outfile = os.path.join(infile_dir, infile_name + ".ll")
 
     target = args.target
     if target is None:
