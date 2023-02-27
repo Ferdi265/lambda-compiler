@@ -133,6 +133,7 @@ def parse_lang(s: str) -> List[Statement]:
             return Import(path, name, is_public)
 
     def parse_mod(is_public: bool) -> Mod:
+        eat(Token.Mod)
         name = eat(Token.Ident)
 
         eat(Token.SemiColon)

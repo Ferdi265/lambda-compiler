@@ -79,7 +79,7 @@ class RootNamespace:
 
         self.crates[crate_name] = crate
 
-    def resolve_absolute(self, path: Path) -> NamespaceEntry:
+    def resolve_absolute(self, path: Path, allow_private: bool = False) -> NamespaceEntry:
         path_crate_name = path.components[0]
         rest_path = Path(path.components[1:])
         if path_crate_name not in self.crates:
@@ -89,13 +89,13 @@ class RootNamespace:
         if len(rest_path.components) == 0:
             return SubModule(crate.path, True, crate)
 
-        return crate.resolve(rest_path, allow_private = False)
+        return crate.resolve(rest_path, allow_private)
 
     def resolve(self, path: Path, mod: ModuleNamespace) -> NamespaceEntry:
         prefix = path.components[0]
         rest_path = Path(path.components[1:])
         if prefix == "self":
-            return mod.resolve(rest_path)
+            return mod.resolve(rest_path, allow_private = True)
         elif prefix == "crate":
             crate_name = mod.path.components[0]
             return self.crates[crate_name].resolve(rest_path, allow_private = True)
@@ -106,6 +106,7 @@ class RootNamespace:
                 mod = mod.parent
                 prefix = rest_path.components[0]
                 rest_path = Path(rest_path.components[1:])
+            rest_path = Path([prefix] + list(rest_path.components))
             return mod.resolve(rest_path, allow_private = True)
         else:
             return self.resolve_absolute(path)
@@ -150,6 +151,12 @@ class ModuleNamespace:
                 del self.entries[name]
 
     def resolve(self, path: Path, allow_private: bool = False) -> NamespaceEntry:
+        if len(path.components) == 0:
+            is_public = True
+            if self.parent is not None:
+                is_public = self.parent.entries[self.get_name()].is_public
+            return SubModule(self.path, is_public, self)
+
         name = path.components[0]
         rest_path = Path(path.components[1:])
         entry = self.get_entry(name)
@@ -158,7 +165,8 @@ class ModuleNamespace:
             raise CollectCrateError(f"cannot access private member '{entry.path}'")
 
         if isinstance(entry, Alias):
-            entry = self.root.resolve_absolute(entry.target)
+            # alias visibility is checked at entry creation time, ignore here
+            entry = self.root.resolve_absolute(entry.target, allow_private = True)
 
         if len(rest_path.components) == 0:
             return entry
@@ -244,16 +252,21 @@ def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace) -> Li
 
         return PathAlias(mod.path / imp.name, target.path, imp.is_public)
 
-    def visit_import_all(imp: ImportAll, mod: ModuleNamespace) -> List[PathAlias]:
+    def visit_import_all(imp: ImportAll, mod: ModuleNamespace) -> List[Statement]:
         target = root.resolve(imp.path, mod)
 
         if not isinstance(target, SubModule):
             raise CollectCrateError(f"cannot import all from non-module '{target.path}'")
 
         submod = target.module
-        aliases = []
+        allow_private = mod.path.is_inside(submod.path)
+
+        aliases: List[Statement] = []
         for name, entry in submod.entries.items():
-            if imp.is_public and not entry.is_public:
+            if not entry.is_public and not allow_private:
+                continue
+
+            if not entry.is_public and imp.is_public:
                 continue
 
             if isinstance(entry, Alias):

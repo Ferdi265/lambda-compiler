@@ -18,6 +18,16 @@ class Path:
     def __init__(self, components: Sequence[str]):
         object.__setattr__(self, "components", tuple(components))
 
+    def is_inside(self, other: Path) -> bool:
+        if len(self.components) < len(other.components):
+            return False
+
+        for i, name in enumerate(other.components):
+            if self.components[i] != name:
+                return False
+
+        return True
+
     def __str__(self) -> str:
         return "::".join(self.components)
 
