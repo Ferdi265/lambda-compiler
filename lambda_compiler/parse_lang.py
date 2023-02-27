@@ -31,16 +31,32 @@ def parse_lang(s: str, file: str) -> List[Statement]:
         except ValueError:
             return False
 
-    def parse_path(crate: str) -> Path:
-        components = [crate]
+    def parse_path_component(first: bool, allow_super: bool) -> str:
+        if cur == Token.Ident:
+            return eat()
+        elif first and cur == Token.Crate:
+            return eat()
+        elif first and cur == Token.Self:
+            return eat()
+        elif allow_super and cur == Token.Super:
+            return eat()
+        else:
+            err()
+
+    def parse_path(base: Optional[str] = None) -> Path:
+        first, allow_super = True, True
+        components = [parse_path_component(first, allow_super) if base is None else base]
         while cur == Token.PathSep:
             eat()
-            components.append(eat(Token.Ident))
+
+            first, allow_super = False, allow_super and components[-1] == "super"
+            components.append(parse_path_component(first, allow_super))
 
         return Path(components)
 
-    def parse_path_all(crate: str) -> Tuple[Path, bool]:
-        components = [crate]
+    def parse_path_all(base: Optional[str] = None) -> Tuple[Path, bool]:
+        first, allow_super = True, True
+        components = [parse_path_component(first, allow_super) if base is None else base]
         is_all = False
         while cur == Token.PathSep:
             eat()
@@ -48,7 +64,9 @@ def parse_lang(s: str, file: str) -> List[Statement]:
                 eat()
                 is_all = True
                 break
-            components.append(eat(Token.Ident))
+
+            first, allow_super = False, allow_super and components[-1] == "super"
+            components.append(parse_path_component(first, allow_super))
 
         return Path(components), is_all
 
@@ -89,6 +107,9 @@ def parse_lang(s: str, file: str) -> List[Statement]:
             return Ident(name)
         elif cur == Token.MacroMarker:
             return parse_macro()
+        else:
+            # must be a path beginning with crate, super, or self
+            return PathExpr(parse_path())
         err()
 
     def parse_chain() -> Expr:
@@ -115,8 +136,7 @@ def parse_lang(s: str, file: str) -> List[Statement]:
     def parse_import(is_public: bool) -> Union[ImportAll, Import]:
         eat(Token.Use)
 
-        base = eat(Token.Ident)
-        path, is_all = parse_path_all(base)
+        path, is_all = parse_path_all()
 
         if is_all:
             eat(Token.SemiColon)

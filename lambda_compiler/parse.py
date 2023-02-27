@@ -27,6 +27,8 @@ class Token(Enum):
     As = auto()
     Extern = auto()
     Crate = auto()
+    Super = auto()
+    Self = auto()
     Impl = auto()
     Inst = auto()
     String = auto()
@@ -52,15 +54,17 @@ patterns: List[Tuple[str, Optional[Token]]] = [
     (r"\[", Token.CaptureOpen),
     (r"\]", Token.CaptureClose),
     (r"\.\.\.", Token.Ellipsis),
-    ("pub", Token.Pub),
-    ("impure", Token.Impure),
-    ("mod", Token.Mod),
-    ("use", Token.Use),
-    ("as", Token.As),
-    ("extern", Token.Extern),
-    ("crate", Token.Crate),
-    ("impl", Token.Impl),
-    ("inst", Token.Inst),
+    ("pub(?=[^a-zA-Z0-9])", Token.Pub),
+    ("impure(?=[^a-zA-Z0-9])", Token.Impure),
+    ("mod(?=[^a-zA-Z0-9])", Token.Mod),
+    ("use(?=[^a-zA-Z0-9])", Token.Use),
+    ("as(?=[^a-zA-Z0-9])", Token.As),
+    ("extern(?=[^a-zA-Z0-9])", Token.Extern),
+    ("crate(?=[^a-zA-Z0-9])", Token.Crate),
+    ("super(?=[^a-zA-Z0-9])", Token.Super),
+    ("self(?=[^a-zA-Z0-9])", Token.Self),
+    ("impl(?=[^a-zA-Z0-9])", Token.Impl),
+    ("inst(?=[^a-zA-Z0-9])", Token.Inst),
     (r'"([^"\\]|\\[^\n])*"', Token.String),
     ("[a-zA-Z_0-9]+", Token.Ident),
 ]

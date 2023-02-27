@@ -25,8 +25,8 @@ def parse_hlir(s: str, file: str, stub: bool = False) -> List[Statement]:
         msg = f": {s}" if s is not None else ""
         raise ParseError(f"parse error in file {file} at line {line} col {col}: ({cur}, '{curs}'){msg}")
 
-    def parse_path(crate: str) -> Path:
-        components = [crate]
+    def parse_path(base: Optional[str] = None) -> Path:
+        components = [eat(Token.Ident) if base is None else base]
         while cur == Token.PathSep:
             eat()
             components.append(eat(Token.Ident))
