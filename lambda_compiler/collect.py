@@ -325,8 +325,8 @@ def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace, stub:
         root.insert_absolute(ass.path, Definition(ass.path, True, False))
         return ass
 
-    def visit_path_alias(alias: PathAlias, mod: ModuleNamespace) -> PathAssignment:
-        root.insert_absolute(alias.path, Alias(alias.path, True, alias.target))
+    def visit_path_alias(alias: PathAlias, mod: ModuleNamespace) -> PathAlias:
+        root.insert_absolute(alias.path, Alias(alias.path, True, alias.value))
         return alias
 
     def visit_expr(expr: Expr, mod: ModuleNamespace, ctx: CollectExprContext) -> Expr:

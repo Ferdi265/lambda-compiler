@@ -73,7 +73,7 @@ class LambdaContext:
         self.current_continuation_id += 1
         return id
 
-    def _impl_metadata(self) -> Tuple[Path, int, int, Optional[ValueLiteral], List[str], List[int]]:
+    def _impl_metadata(self) -> Tuple[Path, int, int, Optional[ValueLiteral], List[str], List[int], bool]:
         continuation_id = self.next_continuation_id()
 
         arg_lit: Optional[ValueLiteral]
