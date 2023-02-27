@@ -1,0 +1,20 @@
+use std::*;
+
+unpack = f -> list ->
+    foldl (f -> el -> f el) f list;
+
+pub make_object = methods -> private ->
+    y (this -> method_selector ->
+        unpack method_selector methods
+            this private
+    );
+
+ignore = ignored -> value ->
+    y (this -> ignored ->
+        iszero ignored
+            value
+            _ -> this (pred ignored)
+    ) ignored;
+
+pub selector = index -> length ->
+    ignore index (ignore (pred (sub length index)));

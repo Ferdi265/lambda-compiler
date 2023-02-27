@@ -1,0 +1,25 @@
+use std::*;
+use super::make_object::*;
+
+pub area = selector !0 !2;
+pub circumference = selector !1 !2;
+
+pub square = side ->
+    make_object
+        (list_n !2
+            # area
+            (this -> side -> mul side side)
+            # circumference
+            (this -> side -> mul side !4)
+        )
+        side;
+
+pub rectangle = side1 -> side2 ->
+    make_object
+        (list_n !2
+            # area
+            (this -> sides -> mul (1st sides) (2nd sides))
+            # circumference
+            (this -> sides -> add (mul (1st sides) !2) (mul (2nd sides) !2))
+        )
+        (pair side1 side2);

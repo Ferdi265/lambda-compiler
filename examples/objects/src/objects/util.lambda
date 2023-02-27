@@ -1,0 +1,22 @@
+use std::*;
+
+# number to string machinery
+
+pub nat2str = n ->
+    iszero n
+        (x -> !"0")
+        (x -> reverse ((y nat2str -> n ->
+            iszero n
+                (x -> nil)
+                (x -> prepend
+                    (add !48 (rem n !10))
+                    (nat2str (div n !10))
+                )
+            ident
+        ) n))
+    ident;
+
+# set function
+
+pub then = val -> ident;
+pub set = val -> f -> f val;

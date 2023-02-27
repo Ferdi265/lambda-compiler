@@ -3,72 +3,12 @@ extern crate io;
 use std::*;
 use io::*;
 
-# number to string machinery
+mod util;
+mod make_object;
+mod shapes;
 
-nat2str = n ->
-    iszero n
-        (x -> !"0")
-        (x -> reverse ((y nat2str -> n ->
-            iszero n
-                (x -> nil)
-                (x -> prepend
-                    (add !48 (rem n !10))
-                    (nat2str (div n !10))
-                )
-            ident
-        ) n))
-    ident;
-
-# set function
-
-then = val -> ident;
-set = val -> f -> f val;
-
-# object machinery
-
-unpack = f -> list ->
-    foldl (f -> el -> f el) f list;
-
-make_object = methods -> private ->
-    y (this -> method_selector ->
-        unpack method_selector methods
-            this private
-    );
-
-ignore = ignored -> value ->
-    y (this -> ignored ->
-        iszero ignored
-            value
-            _ -> this (pred ignored)
-    ) ignored;
-
-selector = index -> length ->
-    ignore index (ignore (pred (sub length index)));
-
-# square / rectangle
-
-area = selector !0 !2;
-circumference = selector !1 !2;
-
-square = side ->
-    make_object
-        (list_n !2
-            # area
-            (this -> side -> mul side side)
-            # circumference
-            (this -> side -> mul side !4)
-        )
-        side;
-
-rectangle = side1 -> side2 ->
-    make_object
-        (list_n !2
-            # area
-            (this -> sides -> mul (1st sides) (2nd sides))
-            # circumference
-            (this -> sides -> add (mul (1st sides) !2) (mul (2nd sides) !2))
-        )
-        (pair side1 side2);
+use self::util::*;
+use self::shapes::*;
 
 # main
 
