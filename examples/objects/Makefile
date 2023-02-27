@@ -25,7 +25,7 @@ clean:
 
 build/%.hlir: src/%.lambda
 	@mkdir -p $$(dirname $@)
-	lambda-lang2hlir -o $@ $^
+	lambda-lang2hlir -P src/ -o $@ $^
 
 build/%.mlir: build/%.hlir
 	@mkdir -p $$(dirname $@)

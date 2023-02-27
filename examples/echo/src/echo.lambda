@@ -1,4 +1,6 @@
 extern crate std;
 extern crate io;
+use std::*;
+use io::*;
 
-pub impure main = _ -> io::puts (io::gets std::ident);
+pub impure main = _ -> puts (gets ident);

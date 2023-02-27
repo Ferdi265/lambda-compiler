@@ -1,4 +1,5 @@
 extern crate std;
+use std::*;
 
 extern impure lambda_io_zero;
 extern impure lambda_io_succ;
@@ -7,33 +8,33 @@ extern impure lambda_io_iszero;
 extern impure lambda_io_putc;
 extern impure lambda_io_getc;
 
-impure nat2c = n -> std::count lambda_io_succ lambda_io_zero n;
+impure nat2c = n -> count lambda_io_succ lambda_io_zero n;
 
-impure c2nat = n -> std::2nd (std::while
-    (p -> std::not (lambda_io_iszero (std::1st p)))
-    (p -> std::pair
-        (lambda_io_pred (std::1st p))
-        (std::succ (std::2nd p))
+impure c2nat = n -> 2nd (while
+    (p -> not (lambda_io_iszero (1st p)))
+    (p -> pair
+        (lambda_io_pred (1st p))
+        (succ (2nd p))
     )
-    (std::pair n std::zero)
+    (pair n zero)
 );
 
-pub eof = std::dec3 std::2 std::5 std::6;
+pub eof = dec3 2 5 6;
 
 pop_eof = list ->
-    std::equal (std::first list) eof
-        (x -> std::rest list)
+    equal (first list) eof
+        (x -> rest list)
         (x -> list)
-    std::ident;
+    ident;
 
 pub impure putc = n -> lambda_io_putc (nat2c n);
 
-pub impure puts = s -> std::map putc s;
+pub impure puts = s -> map putc s;
 
 pub impure getc = x -> c2nat (lambda_io_getc x);
 
-pub impure gets = x -> std::reverse (pop_eof (std::while
-    (l -> std::not (std::or (std::equal (std::first l) eof) (std::equal (std::first l) std::10)))
-    (l -> std::prepend (getc std::ident) l)
-    (std::prepend (getc std::ident) std::nil)
+pub impure gets = x -> reverse (pop_eof (while
+    (l -> not (or (equal (first l) eof) (equal (first l) 10)))
+    (l -> prepend (getc ident) l)
+    (prepend (getc ident) nil)
 ));

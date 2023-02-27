@@ -1,47 +1,49 @@
 extern crate std;
 extern crate io;
+use std::*;
+use io::*;
 
 # number to string machinery
 
 nat2str = n ->
-    std::iszero n
+    iszero n
         (x -> !"0")
-        (x -> std::reverse ((std::y nat2str -> n ->
-            std::iszero n
-                (x -> std::nil)
-                (x -> std::prepend
-                    (std::add !48 (std::rem n !10))
-                    (nat2str (std::div n !10))
+        (x -> reverse ((y nat2str -> n ->
+            iszero n
+                (x -> nil)
+                (x -> prepend
+                    (add !48 (rem n !10))
+                    (nat2str (div n !10))
                 )
-            std::ident
+            ident
         ) n))
-    std::ident;
+    ident;
 
 # set function
 
-do = val -> std::ident;
+then = val -> ident;
 set = val -> f -> f val;
 
 # object machinery
 
 unpack = f -> list ->
-    std::foldl (f -> el -> f el) f list;
+    foldl (f -> el -> f el) f list;
 
 make_object = methods -> private ->
-    std::y (this -> method_selector ->
+    y (this -> method_selector ->
         unpack method_selector methods
             this private
     );
 
 ignore = ignored -> value ->
-    std::y (this -> ignored ->
-        std::iszero ignored
+    y (this -> ignored ->
+        iszero ignored
             value
-            _ -> this (std::pred ignored)
+            _ -> this (pred ignored)
     ) ignored;
 
 selector = index -> length ->
-    ignore index (ignore (std::pred (std::sub length index)));
+    ignore index (ignore (pred (sub length index)));
 
 # square / rectangle
 
@@ -50,39 +52,39 @@ circumference = selector !1 !2;
 
 square = side ->
     make_object
-        (std::list_n !2
+        (list_n !2
             # area
-            (this -> side -> std::mul side side)
+            (this -> side -> mul side side)
             # circumference
-            (this -> side -> std::mul side !4)
+            (this -> side -> mul side !4)
         )
         side;
 
 rectangle = side1 -> side2 ->
     make_object
-        (std::list_n !2
+        (list_n !2
             # area
-            (this -> sides -> std::mul (std::1st sides) (std::2nd sides))
+            (this -> sides -> mul (1st sides) (2nd sides))
             # circumference
-            (this -> sides -> std::add (std::mul (std::1st sides) !2) (std::mul (std::2nd sides) !2))
+            (this -> sides -> add (mul (1st sides) !2) (mul (2nd sides) !2))
         )
-        (std::pair side1 side2);
+        (pair side1 side2);
 
 # main
 
 pub impure main = x ->
     set (square !5) my_square ->
-    do (io::puts !"square: ")
-        do (io::puts !"area = ")
-        do (io::puts (nat2str (my_square area)))
-        do (io::puts !", circumference = ")
-        do (io::puts (nat2str (my_square circumference)))
-        do (io::puts !"\n")
+    then (puts !"square: ")
+        then (puts !"area = ")
+        then (puts (nat2str (my_square area)))
+        then (puts !", circumference = ")
+        then (puts (nat2str (my_square circumference)))
+        then (puts !"\n")
     set (rectangle !3 !4) my_rectangle ->
-    do (io::puts !"rectangle: ")
-        do (io::puts !"area = ")
-        do (io::puts (nat2str (my_rectangle area)))
-        do (io::puts !", circumference = ")
-        do (io::puts (nat2str (my_rectangle circumference)))
-        do (io::puts !"\n")
+    then (puts !"rectangle: ")
+        then (puts !"area = ")
+        then (puts (nat2str (my_rectangle area)))
+        then (puts !", circumference = ")
+        then (puts (nat2str (my_rectangle circumference)))
+        then (puts !"\n")
     ;

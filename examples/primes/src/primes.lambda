@@ -1,37 +1,39 @@
 extern crate std;
 extern crate io;
+use std::*;
+use io::*;
 
 nat2str = n ->
-    std::iszero n
+    iszero n
         (x -> !"0")
-        (x -> std::reverse ((std::y nat2str -> n ->
-            std::iszero n
-                (x -> std::nil)
-                (x -> std::prepend
-                    (std::add !48 (std::rem n !10))
-                    (nat2str (std::div n !10))
+        (x -> reverse ((y nat2str -> n ->
+            iszero n
+                (x -> nil)
+                (x -> prepend
+                    (add !48 (rem n !10))
+                    (nat2str (div n !10))
                 )
-            std::ident
+            ident
         ) n))
-    std::ident;
+    ident;
 
-isprime = n -> (std::y isprime -> m ->
-        std::equal n m
-            (x -> std::true)
-            (x -> std::iszero (std::rem n m)
-                (x -> std::false)
-                (x-> isprime (std::succ m))
-            std::ident)
-        std::ident
+isprime = n -> (y isprime -> m ->
+        equal n m
+            (x -> true)
+            (x -> iszero (rem n m)
+                (x -> false)
+                (x-> isprime (succ m))
+            ident)
+        ident
     ) !2;
 
-pub impure main = _ -> (std::y loop -> n ->
+pub impure main = _ -> (y loop -> n ->
         isprime n
             (x ->
-                (io::puts (nat2str n))
-                (io::puts !"\n")
+                (puts (nat2str n))
+                (puts !"\n")
             )
             (x -> x)
-        std::ident
-            (loop (std::succ n))
+        ident
+            (loop (succ n))
     ) !2;

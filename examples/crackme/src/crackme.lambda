@@ -1,14 +1,16 @@
 extern crate std;
 extern crate io;
+use std::*;
+use io::*;
 
 compare = list1 -> list2 ->
-    std::foldl std::and std::true (std::zip std::equal (std::append list1 io::eof) (std::append list2 io::eof));
+    foldl and true (zip equal (append list1 eof) (append list2 eof));
 
 pub impure main = _ ->
     (compare
         !"LosCTF{Church_0bfUsC4t10n}\n"
-        (io::gets std::ident)
+        (gets ident)
     )
-        (x -> io::puts !"ok\n")
-        (x -> io::puts !"hack harder\n")
-    std::ident;
+        (x -> puts !"ok\n")
+        (x -> puts !"hack harder\n")
+    ident;
