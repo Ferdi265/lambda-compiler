@@ -77,6 +77,11 @@ class Import(Statement):
     is_public: bool
 
 @dataclass
+class ImportAll(Statement):
+    path: Path
+    is_public: bool
+
+@dataclass
 class EllipsisExpr(Expr):
     pass
 

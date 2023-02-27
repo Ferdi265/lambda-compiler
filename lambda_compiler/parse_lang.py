@@ -39,6 +39,19 @@ def parse_lang(s: str) -> List[Statement]:
 
         return Path(components)
 
+    def parse_path_all(crate: str) -> Tuple[Path, bool]:
+        components = [crate]
+        is_all = False
+        while cur == Token.PathSep:
+            eat()
+            if cur == Token.All:
+                eat()
+                is_all = True
+                break
+            components.append(eat(Token.Ident))
+
+        return Path(components), is_all
+
     def parse_paren() -> Paren:
         chain = Paren(parse_chain())
         eat(Token.ParenClose)
@@ -99,21 +112,25 @@ def parse_lang(s: str) -> List[Statement]:
 
         return NameAssignment(name, value, is_public, is_impure)
 
-    def parse_import(is_public: bool) -> Import:
+    def parse_import(is_public: bool) -> Union[ImportAll, Import]:
         eat(Token.Use)
 
         base = eat(Token.Ident)
-        path = parse_path(base)
+        path, is_all = parse_path_all(base)
 
-        name: str
-        if cur == Token.As:
-            eat()
-            name = eat(Token.Ident)
+        if is_all:
+            eat(Token.SemiColon)
+            return ImportAll(path, is_public)
         else:
-            name = path.components[-1]
+            name: str
+            if cur == Token.As:
+                eat()
+                name = eat(Token.Ident)
+            else:
+                name = path.components[-1]
 
-        eat(Token.SemiColon)
-        return Import(path, name, is_public)
+            eat(Token.SemiColon)
+            return Import(path, name, is_public)
 
     def parse_mod(is_public: bool) -> Mod:
         name = eat(Token.Ident)

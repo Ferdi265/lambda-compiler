@@ -208,6 +208,8 @@ def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace) -> Li
                 return visit_module(submod, mod)
             case Import() as imp:
                 return visit_import(imp, mod)
+            case ImportAll() as imp:
+                return visit_import_all(imp, mod)
             case NameAssignment() as ass:
                 return visit_assignment(ass, mod)
             case _:
@@ -241,6 +243,27 @@ def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace) -> Li
             raise CollectCrateError(f"cannot publicly export non-public definition '{target.path}' as '{abs_path}'")
 
         return PathAlias(mod.path / imp.name, target.path, imp.is_public)
+
+    def visit_import_all(imp: ImportAll, mod: ModuleNamespace) -> List[PathAlias]:
+        target = root.resolve(imp.path, mod)
+
+        if not isinstance(target, SubModule):
+            raise CollectCrateError(f"cannot import all from non-module '{target.path}'")
+
+        submod = target.module
+        aliases = []
+        for name, entry in submod.entries.items():
+            if imp.is_public and not entry.is_public:
+                continue
+
+            if isinstance(entry, Alias):
+                entry = mod.root.resolve_absolute(entry.target)
+
+            mod.insert_entry(name, Alias(mod.path / name, imp.is_public, entry.path))
+            if imp.is_public and isinstance(entry, Definition):
+                aliases.append(PathAlias(mod.path / name, entry.path, imp.is_public))
+
+        return aliases
 
     def visit_assignment(ass: NameAssignment, mod: ModuleNamespace) -> PathAssignment:
         abs_path = mod.path / ass.name

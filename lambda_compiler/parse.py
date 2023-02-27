@@ -11,6 +11,7 @@ class Token(Enum):
     ParenOpen = auto()
     ParenClose = auto()
     Arrow = auto()
+    All = auto()
     PathSep = auto()
     ImplSep = auto()
     InstSep = auto()
@@ -42,6 +43,7 @@ patterns: List[Tuple[str, Optional[Token]]] = [
     (r"\(", Token.ParenOpen),
     (r"\)", Token.ParenClose),
     ("->", Token.Arrow),
+    (r"\*", Token.All),
     ("::", Token.PathSep),
     ("!", Token.ImplSep),
     ("%", Token.InstSep),
