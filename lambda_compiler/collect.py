@@ -79,6 +79,15 @@ class RootNamespace:
 
         self.crates[crate_name] = crate
 
+    def insert_absolute(self, path: Path, entry: NamespaceEntry):
+        path_crate_name = path.components[0]
+        rest_path = Path(path.components[1:])
+        if path_crate_name not in self.crates:
+            raise CollectCrateError(f"'{path}' is from an undeclared extern crate")
+
+        crate = self.crates[path_crate_name]
+        crate.insert_absolute(rest_path, entry)
+
     def resolve_absolute(self, path: Path, allow_private: bool = False) -> NamespaceEntry:
         path_crate_name = path.components[0]
         rest_path = Path(path.components[1:])
@@ -145,6 +154,22 @@ class ModuleNamespace:
         self.entries[name] = SubModule(mod.path, is_public, mod)
         return mod
 
+    def insert_absolute(self, path: Path, entry: NamespaceEntry):
+        name = path.components[0]
+        rest_path = Path(path.components[1:])
+        if len(rest_path.components) == 0:
+            return self.insert_entry(name, entry)
+
+        if name not in self.entries:
+            mod = ModuleNamespace(self.root, self, self.path / name, self.src, self.dir, self.owns_dir)
+            self.entries[name] = SubModule(mod.path, True, mod)
+
+        submod = self.entries[name]
+        if not isinstance(submod, SubModule):
+            raise CollectCrateError(f"'{self.path}::{name}' is not a module, cannot define '{self.path}::{path}' in it")
+
+        submod.module.insert_absolute(rest_path, entry)
+
     def strip_private(self):
         for name in list(self.entries.keys()):
             if not self.entries[name].is_public:
@@ -190,12 +215,16 @@ class CollectExprContext:
     def __copy__(self) -> CollectExprContext:
         return CollectExprContext(self.is_impure, copy(self.locals), OrderedSet())
 
-def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace) -> List[Statement]:
+def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace, stub: bool = False) -> List[Statement]:
     def collect(mod: ModuleNamespace) -> List[Statement]:
         with open(mod.src, "r") as f:
             code = f.read()
 
-        prog = parse_lang(code)
+        if stub:
+            prog = parse_hlir(code, stub = True)
+        else:
+            prog = parse_lang(code)
+
         statements = []
         for stmt in prog:
             new_stmt = visit_statement(stmt, mod)
@@ -220,6 +249,10 @@ def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace) -> Li
                 return visit_import_all(imp, mod)
             case NameAssignment() as ass:
                 return visit_assignment(ass, mod)
+            case PathAssignment() as ass:
+                return visit_path_assignment(ass, mod)
+            case PathAlias() as alias:
+                return visit_path_alias(alias, mod)
             case _:
                 raise CollectCrateError(f"unexpected AST node encountered: {stmt}")
 
@@ -288,6 +321,14 @@ def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace) -> Li
         mod.insert_entry(ass.name, Definition(abs_path, ass.is_public, ass.is_impure))
         return PathAssignment(abs_path, value, ass.is_public, ass.is_impure)
 
+    def visit_path_assignment(ass: PathAssignment, mod: ModuleNamespace) -> PathAssignment:
+        root.insert_absolute(ass.path, Definition(ass.path, True, False))
+        return ass
+
+    def visit_path_alias(alias: PathAlias, mod: ModuleNamespace) -> PathAssignment:
+        root.insert_absolute(alias.path, Alias(alias.path, True, alias.target))
+        return alias
+
     def visit_expr(expr: Expr, mod: ModuleNamespace, ctx: CollectExprContext) -> Expr:
         match expr:
             case Paren(expr):
@@ -350,10 +391,7 @@ def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace) -> Li
 
     return collect(mod)
 
-def collect_crate_from_hlis(file_path: str, loader: Loader, namespace: RootNamespace):
-    raise CollectCrateError("HLIS collection not implemented")
-
-def collect_crate(file_path: str, loader: Loader, namespace: Optional[RootNamespace] = None) -> List[Statement]:
+def collect_crate(file_path: str, loader: Loader, namespace: Optional[RootNamespace] = None, stub: bool = False) -> List[Statement]:
     crate_info = loader.initial_crate_name_and_dir(file_path)
     crate_name = crate_info.name
     crate_dir = crate_info.dir
@@ -368,4 +406,4 @@ def collect_crate(file_path: str, loader: Loader, namespace: Optional[RootNamesp
 
     crate = ModuleNamespace(root, None, Path(()) / crate_name, crate_src, crate_dir, owns_dir)
     root.insert_crate(crate)
-    return collect_mod(crate, loader, root)
+    return collect_mod(crate, loader, root, stub)

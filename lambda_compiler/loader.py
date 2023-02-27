@@ -53,6 +53,11 @@ class CratePathLoader(Loader):
             if os.path.isfile(crate_src):
                 break
 
+            crate_src = os.path.join(dir, f"{crate}.hlir")
+            is_hlis = True
+            if os.path.isfile(crate_src):
+                break
+
             crate_src = os.path.join(dir, f"{crate}.lambda")
             is_hlis = False
             if os.path.isfile(crate_src):
@@ -67,10 +72,7 @@ class CratePathLoader(Loader):
 
         root = RootNamespace(crate)
         root.blacklist_crates |= parent.blacklist_crates
-        if is_hlis:
-            collect_crate_from_hlis(crate_src, self, root)
-        else:
-            collect_crate(crate_src, self, root)
+        collect_crate(crate_src, self, root, stub = is_hlis)
 
         mod = root.crates[crate]
         mod.strip_private()
