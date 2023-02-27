@@ -55,7 +55,7 @@ def main():
     with open(infile, "r") as f:
         code = f.read()
 
-    ast = parse_mlir(code)
+    ast = parse_mlir(code, infile)
     llir = generate_llir(ast, crate, arch)
 
     with sys.stdout if outfile == "-" else open(outfile, "w") as f:

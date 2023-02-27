@@ -1,7 +1,7 @@
 from typing import *
 from .parse import *
 
-def parse_lang(s: str) -> List[Statement]:
+def parse_lang(s: str, file: str) -> List[Statement]:
     tokens = tokenize(s)
     cur, curs, line, col = Token.End, "", 1, 1
 
@@ -22,7 +22,7 @@ def parse_lang(s: str) -> List[Statement]:
         return cs
 
     def err() -> NoReturn:
-        raise ParseError(f"parse error at line {line} col {col}: ({cur}, '{curs}')")
+        raise ParseError(f"parse error in file {file} at line {line} col {col}: ({cur}, '{curs}')")
 
     def is_number() -> bool:
         try:

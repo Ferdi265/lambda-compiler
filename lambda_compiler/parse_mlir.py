@@ -5,7 +5,7 @@ from .instantiate import *
 
 import string
 
-def parse_mlir(s: str) -> List[Statement]:
+def parse_mlir(s: str, file: str) -> List[Statement]:
     tokens = tokenize(s)
     cur, curs, line, col = Token.End, "", 1, 1
 
@@ -28,8 +28,9 @@ def parse_mlir(s: str) -> List[Statement]:
         drop()
         return cs
 
-    def err() -> NoReturn:
-        raise ParseError(f"parse error at line {line} col {col}: ({cur}, '{curs}')")
+    def err(s: Optional[str] = None) -> NoReturn:
+        msg = f": {s}" if s is not None else ""
+        raise ParseError(f"parse error in file {file} at line {line} col {col}: ({cur}, '{curs}'){msg}")
 
     def parse_path(base: Optional[str] = None) -> Path:
         components = [eat(Token.Ident) if base is None else base]
@@ -45,7 +46,7 @@ def parse_mlir(s: str) -> List[Statement]:
         try:
             return int(num_str)
         except ValueError:
-            raise ParseError(f"parse error at line {line} col {col}: invalid number {num_str!r}")
+            err(f"invalid number {num_str!r}")
 
     def parse_inst_path(path: Optional[Path] = None) -> Tuple[Path, int]:
         if path is None:
@@ -74,13 +75,13 @@ def parse_mlir(s: str) -> List[Statement]:
     def lookup_inst(path: Optional[Path] = None) -> Instance:
         inst_path, inst_id = parse_inst_path(path)
         if (inst_path, inst_id) not in inst_table:
-            raise ParseError(f"parse error at line {line} col {col}: unknown instance {inst_path}%{inst_id}")
+            err(f"unknown instance {inst_path}%{inst_id}")
         return inst_table[(inst_path, inst_id)]
 
     def lookup_impl(path: Optional[Path] = None) -> Implementation:
         impl_path, lambda_id, continuation_id = parse_impl_path(path)
         if (impl_path, lambda_id, continuation_id) not in impl_table:
-            raise ParseError(f"parse error at line {line} col {col}: unknown impl {impl_path}!{lambda_id}!{continuation_id}")
+            err(f"unknown impl {impl_path}!{lambda_id}!{continuation_id}")
         return impl_table[(impl_path, lambda_id, continuation_id)]
 
     def parse_def() -> InstanceDefinition:

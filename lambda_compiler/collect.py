@@ -221,9 +221,9 @@ def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace, stub:
             code = f.read()
 
         if stub:
-            prog = parse_hlir(code, stub = True)
+            prog = parse_hlir(code, mod.src, stub = True)
         else:
-            prog = parse_lang(code)
+            prog = parse_lang(code, mod.src)
 
         statements = []
         for stmt in prog:

@@ -1,7 +1,7 @@
 from typing import *
 from .parse import *
 
-def parse_hlir(s: str, stub: bool = False) -> List[Statement]:
+def parse_hlir(s: str, file: str, stub: bool = False) -> List[Statement]:
     tokens = tokenize(s)
     cur, curs, line, col = Token.End, "", 1, 1
 
@@ -23,7 +23,7 @@ def parse_hlir(s: str, stub: bool = False) -> List[Statement]:
 
     def err(s: Optional[str] = None) -> NoReturn:
         msg = f": {s}" if s is not None else ""
-        raise ParseError(f"parse error at line {line} col {col}: ({cur}, '{curs}'){msg}")
+        raise ParseError(f"parse error in file {file} at line {line} col {col}: ({cur}, '{curs}'){msg}")
 
     def parse_path(crate: str) -> Path:
         components = [crate]

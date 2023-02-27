@@ -37,7 +37,7 @@ def main():
     with open(infile, "r") as f:
         code = f.read()
 
-    ast = parse_hlir(code, stub=True)
+    ast = parse_hlir(code, infile, stub=True)
 
     with sys.stdout if outfile == "-" else open(outfile, "w") as f:
         pretty_hlir(ast, file=f, stub=True)

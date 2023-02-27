@@ -37,7 +37,7 @@ def main():
     with open(infile, "r") as f:
         code = f.read()
 
-    ast = parse_hlir(code)
+    ast = parse_hlir(code, infile)
     ast = resolve(ast)
     ast = rechain(ast)
     ast = compute_continuations(ast)
