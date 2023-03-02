@@ -156,6 +156,14 @@ def dedup_implementations(prog: List[Statement]) -> List[Statement]:
         for inst_def in ctx.definitions:
             visit_inst_def(inst_def, ctx)
 
+
+        for stmt in ctx.program:
+            if not isinstance(stmt, Instance):
+                continue
+
+            stmt.inst_id = inst_counter[stmt.path]
+            inst_counter[stmt.path] += 1
+
         return ctx.program
 
     def visit_inst_def(inst_def: InstanceDefinition, ctx: DedupImplementationsContext):
@@ -174,9 +182,6 @@ def dedup_implementations(prog: List[Statement]) -> List[Statement]:
 
         for capture in inst.captures:
             visit_inst(capture, ctx)
-
-        inst.inst_id = inst_counter[inst.path]
-        inst_counter[inst.path] += 1
 
         ctx.program.append(inst)
 
