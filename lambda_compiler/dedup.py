@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import *
+from collections import defaultdict
 
 from .instantiate import *
 
@@ -146,6 +147,7 @@ class DedupImplementationsContext:
                         self.definitions.append(inst_def)
 
 def dedup_implementations(prog: List[Statement]) -> List[Statement]:
+    inst_counter: DefaultDict[Path, int] = defaultdict(int)
     def visit_program(prog: List[Statement]) -> List[Statement]:
         ctx = DedupImplementationsContext()
 
@@ -172,6 +174,9 @@ def dedup_implementations(prog: List[Statement]) -> List[Statement]:
 
         for capture in inst.captures:
             visit_inst(capture, ctx)
+
+        inst.inst_id = inst_counter[inst.path]
+        inst_counter[inst.path] += 1
 
         ctx.program.append(inst)
 
