@@ -81,7 +81,7 @@ class InstantiateContext:
         assert len(impl.anonymous_captures) == 0
 
         try:
-            inst = self.evaluate_impl(impl, [])
+            inst = self.evaluate_stack(impl)
             needs_init = False
         except InstantiateNotYetSeenError:
             inst = self.resolve_impl_inst(impl)
@@ -91,24 +91,34 @@ class InstantiateContext:
         self.definitions.append(inst_def)
         self.def_table[impl.path] = inst_def
 
-    def evaluate_inst(self, inst: Instance, arg: Instance) -> Instance:
-        return self.evaluate_impl(inst.impl, [arg] + inst.captures)
+    def evaluate_stack(self, impl: Implementation) -> Instance:
+        stack: List[Instance] = []
+        fn, arg = self.evaluate_impl(impl, [], stack)
+        while fn is not None or len(stack) > 0:
+            if fn is None:
+                fn = stack.pop()
+            fn, arg = self.evaluate_inst(fn, arg, stack)
 
-    def evaluate_impl(self, impl: Implementation, captures: List[Instance]) -> Instance:
+        return arg
+
+    def evaluate_inst(self, inst: Instance, arg: Instance, stack: List[Instance]) -> Tuple[Optional[Instance], Instance]:
+        return self.evaluate_impl(inst.impl, [arg] + inst.captures, stack)
+
+    def evaluate_impl(self, impl: Implementation, captures: List[Instance], stack: List[Instance]) -> Tuple[Optional[Instance], Instance]:
         impl = self.resolve_impl(impl)
         match impl:
             case ReturnImplementation() as impl:
-                return self.evaluate_literal(impl.value, captures)
+                return None, self.evaluate_literal(impl.value, captures)
             case TailCallImplementation() as impl:
                 fn = self.evaluate_literal(impl.fn, captures)
                 arg = self.evaluate_literal(impl.arg, captures)
-                return self.evaluate_inst(fn, arg)
+                return fn, arg
             case ContinueCallImplementation() as impl:
                 fn = self.evaluate_literal(impl.fn, captures)
                 arg = self.evaluate_literal(impl.arg, captures)
                 next = self.evaluate_literal(impl.next, captures)
-                ret = self.evaluate_inst(fn, arg)
-                return self.evaluate_inst(next, ret)
+                stack.append(next)
+                return fn, arg
             case _:
                 raise InstantiateError(f"unexpected AST node encountered: {impl}")
 
