@@ -2,7 +2,25 @@ from __future__ import annotations
 from typing import *
 from collections import defaultdict
 
-from .instantiate import *
+from .renumber import *
+
+@dataclass
+class Instance(Statement):
+    path: Path
+    inst_id: int
+    impl: Implementation
+    captures: List[Instance]
+
+@dataclass
+class InstanceDefinition(Statement):
+    path: Path
+    inst: Instance
+    needs_init: bool
+    is_public: bool
+
+@dataclass
+class InstanceLiteral(ValueLiteral):
+    inst: Instance
 
 class DedupNotYetSeenError(Exception):
     pass
@@ -120,8 +138,11 @@ class DedupImplementationsContext:
             self.inst_dedup[hash_value] = inst
             self.instances.append(inst)
 
+    def insert_inst_def(self, inst_def: InstanceDefinition):
+        self.definitions.append(inst_def)
+
     def deduplicate(self, prog: List[Statement]):
-        queue = prog
+        queue = prog[:]
         while len(queue) > 0:
             for stmt in queue[:]:
                 hash_value: Optional[tuple] = None
@@ -144,27 +165,30 @@ class DedupImplementationsContext:
                     case Instance() as inst:
                         self.insert_inst(inst, hash_value)
                     case InstanceDefinition() as inst_def:
-                        self.definitions.append(inst_def)
+                        self.insert_inst_def(inst_def)
 
-def dedup_implementations(prog: List[Statement]) -> List[Statement]:
+    def dedup_new_inst(self, inst: Instance) -> Instance:
+        hash_value = self.hash_inst(inst)
+        if hash_value is None:
+            raise DedupImplementationsError("cannot deduplicate new instance, captures unknown")
+
+        self.insert_inst(inst, hash_value)
+        return self.inst_dedup[hash_value]
+
+def build_dedup_context(prog: List[Statement]) -> DedupImplementationsContext:
+    ctx = DedupImplementationsContext()
+    ctx.deduplicate(prog)
+    return ctx
+
+def collect_dedup_context(ctx: DedupImplementationsContext, tree_shake: bool = False) -> List[Statement]:
+    return (
+        cast(List[Statement], ctx.definitions) +
+        cast(List[Statement], ctx.implementations) +
+        cast(List[Statement], ctx.instances)
+    )
+
+def tree_shake_dedup_context(ctx: DedupImplementationsContext) -> List[Statement]:
     inst_counter: DefaultDict[Path, int] = defaultdict(int)
-    def visit_program(prog: List[Statement]) -> List[Statement]:
-        ctx = DedupImplementationsContext()
-
-        ctx.deduplicate(prog)
-
-        for inst_def in ctx.definitions:
-            visit_inst_def(inst_def, ctx)
-
-
-        for stmt in ctx.program:
-            if not isinstance(stmt, Instance):
-                continue
-
-            stmt.inst_id = inst_counter[stmt.path]
-            inst_counter[stmt.path] += 1
-
-        return ctx.program
 
     def visit_inst_def(inst_def: InstanceDefinition, ctx: DedupImplementationsContext):
         if inst_def in ctx.program:
@@ -211,4 +235,18 @@ def dedup_implementations(prog: List[Statement]) -> List[Statement]:
                 impl, _ = ctx.dedup_impl(impl)
                 visit_impl(impl, ctx)
 
-    return visit_program(prog)
+    for inst_def in ctx.definitions:
+        visit_inst_def(inst_def, ctx)
+
+    for stmt in ctx.program:
+        if not isinstance(stmt, Instance):
+            continue
+
+        stmt.inst_id = inst_counter[stmt.path]
+        inst_counter[stmt.path] += 1
+
+    return ctx.program
+
+def dedup_implementations(prog: List[Statement]) -> List[Statement]:
+    ctx = build_dedup_context(prog)
+    return tree_shake_dedup_context(ctx)

@@ -2,25 +2,7 @@ from __future__ import annotations
 from typing import *
 from dataclasses import dataclass, field
 
-from .renumber import *
-
-@dataclass
-class Instance(Statement):
-    path: Path
-    inst_id: int
-    impl: Implementation
-    captures: List[Instance]
-
-@dataclass
-class InstanceDefinition(Statement):
-    path: Path
-    inst: Instance
-    needs_init: bool
-    is_public: bool
-
-@dataclass
-class InstanceLiteral(ValueLiteral):
-    inst: Instance
+from .dedup import *
 
 class InstantiateNotYetSeenError(Exception):
     pass
@@ -30,6 +12,8 @@ class InstantiateError(Exception):
 
 @dataclass
 class InstantiateContext:
+    dedup: DedupImplementationsContext
+
     impl_table: Dict[Tuple[Path, int, int], Implementation] = field(default_factory = dict)
     inst_table: Dict[Tuple[Path, int], Instance] = field(default_factory = dict)
     def_table: Dict[Path, InstanceDefinition] = field(default_factory = dict)
@@ -74,8 +58,12 @@ class InstantiateContext:
         inst: Instance = Instance(impl.path, self.next_inst_id(impl.path), impl, captures)
         self.inst_table[(inst.path, inst.inst_id)] = inst
         self.impl_inst_table[(impl.path, impl.lambda_id, impl.continuation_id)] = inst
-        self.instances.append(inst)
-        return inst
+
+        dedup_inst = self.dedup.dedup_new_inst(inst)
+        if dedup_inst is inst:
+            self.instances.append(inst)
+
+        return dedup_inst
 
     def evaluate_definition(self, impl: Implementation):
         assert len(impl.anonymous_captures) == 0
@@ -90,6 +78,7 @@ class InstantiateContext:
         inst_def = InstanceDefinition(impl.path, inst, needs_init, impl.is_public)
         self.definitions.append(inst_def)
         self.def_table[impl.path] = inst_def
+        self.dedup.insert_inst_def(inst_def)
 
     def evaluate_stack(self, impl: Implementation) -> Instance:
         stack: List[Instance] = []
@@ -137,7 +126,8 @@ class InstantiateContext:
 
 def instantiate_implementations(prog: List[Statement]) -> List[Statement]:
     def visit_program(prog: List[Statement]) -> List[Statement]:
-        ctx = InstantiateContext()
+        dedup = build_dedup_context(prog)
+        ctx = InstantiateContext(dedup)
 
         for stmt in prog:
             visit_statement_find_impls(stmt, ctx)
@@ -145,7 +135,7 @@ def instantiate_implementations(prog: List[Statement]) -> List[Statement]:
         for stmt in prog:
             visit_statement_instantiate(stmt, ctx)
 
-        return prog + cast(List[Statement], ctx.instances) + cast(List[Statement], ctx.definitions)
+        return tree_shake_dedup_context(ctx.dedup)
 
     def visit_statement_find_impls(stmt: Statement, ctx: InstantiateContext):
         match stmt:

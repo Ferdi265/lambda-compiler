@@ -44,7 +44,6 @@ def main():
     ast = flatten_implementations(ast)
     ast = renumber_captures(ast)
     ast = instantiate_implementations(ast)
-    ast = dedup_implementations(ast)
 
     with sys.stdout if outfile == "-" else open(outfile, "w") as f:
         pretty_mlir(ast, file=f)
