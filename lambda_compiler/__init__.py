@@ -5,6 +5,7 @@ from .parse import *
 from .parse_lang import *
 from .collect import *
 from .loader import *
+from .pretty_deps import *
 from .demacro import *
 from .resolve import *
 from .pretty_hlir import *

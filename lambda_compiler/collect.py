@@ -132,8 +132,9 @@ class RootNamespace:
             crate_order = []
 
         main_crate = self.crates[self.main_crate]
-        if main_crate in crate_order:
-            return crate_order
+        for crate in crate_order:
+            if crate.get_name() == main_crate.get_name():
+                return crate_order
 
         for mod in self.crates.values():
             if mod.root is self:

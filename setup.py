@@ -15,6 +15,7 @@ setup(
     packages = ["lambda_compiler", "lambda_compiler.cli"],
     entry_points = {
         "console_scripts": [
+            "lambda-lang2deps=lambda_compiler.cli.lang2deps:main",
             "lambda-lang2hlir=lambda_compiler.cli.lang2hlir:main",
             "lambda-hlir2hlis=lambda_compiler.cli.hlir2hlis:main",
             "lambda-hlir2mlir=lambda_compiler.cli.hlir2mlir:main",
