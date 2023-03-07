@@ -63,6 +63,10 @@ class Loader(ABC):
         ...
 
     @abstractmethod
+    def load_crate_mlir(self, crate: str) -> List[Statement]:
+        ...
+
+    @abstractmethod
     def load_mod(self, mod: ModuleNamespace, name: str) -> ModuleNamespace:
         ...
 
@@ -119,6 +123,26 @@ class RootNamespace:
             return mod.resolve(rest_path, allow_private = True)
         else:
             return self.resolve_absolute(path)
+
+    def mod_order(self) -> List[ModuleNamespace]:
+        return self.crates[self.main_crate].mod_order()
+
+    def crate_order(self, crate_order: Optional[List[ModuleNamespace]] = None) -> List[ModuleNamespace]:
+        if crate_order is None:
+            crate_order = []
+
+        main_crate = self.crates[self.main_crate]
+        if main_crate in crate_order:
+            return crate_order
+
+        for mod in self.crates.values():
+            if mod.root is self:
+                continue
+
+            mod.root.crate_order(crate_order)
+
+        crate_order.insert(0, main_crate)
+        return crate_order
 
 @dataclass
 class ModuleNamespace:
@@ -205,6 +229,23 @@ class ModuleNamespace:
                 return submod.module.resolve(rest_path, allow_private = False)
             case _:
                 raise CollectCrateError(f"unexpected entry type encountered: {entry}")
+
+    def mod_order(self, mod_order: Optional[List[ModuleNamespace]] = None) -> List[ModuleNamespace]:
+        if mod_order is None:
+            mod_order = []
+
+        if self in mod_order:
+            return mod_order
+
+        for entry in self.entries.values():
+            if not isinstance(entry, SubModule):
+                continue
+
+            mod = entry.module
+            mod.mod_order(mod_order)
+
+        mod_order.insert(0, self)
+        return mod_order
 
 @dataclass
 class CollectExprContext:
@@ -391,7 +432,7 @@ def collect_mod(mod: ModuleNamespace, loader: Loader, root: RootNamespace, stub:
 
     return collect(mod)
 
-def collect_crate(file_path: str, loader: Loader, namespace: Optional[RootNamespace] = None, stub: bool = False) -> List[Statement]:
+def collect_crate(file_path: str, loader: Loader, namespace: Optional[RootNamespace] = None, stub: bool = False) -> Tuple[List[Statement], RootNamespace]:
     crate_info = loader.initial_crate_name_and_dir(file_path)
     crate_name = crate_info.name
     crate_dir = crate_info.dir
@@ -406,4 +447,4 @@ def collect_crate(file_path: str, loader: Loader, namespace: Optional[RootNamesp
 
     crate = ModuleNamespace(root, None, Path(()) / crate_name, crate_src, crate_dir, owns_dir)
     root.insert_crate(crate)
-    return collect_mod(crate, loader, root, stub)
+    return collect_mod(crate, loader, root, stub), root
