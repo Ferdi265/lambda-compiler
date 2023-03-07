@@ -43,6 +43,7 @@ class FlattenImplsError(Exception):
 class FlattenImplsContext:
     current_assignment: Optional[Path] = None
     current_lambda_id: int = field(default_factory = int)
+    extern_crates: List[ExternCrate] = field(default_factory = list)
     implementations: List[Implementation] = field(default_factory = list)
     is_public: bool = False
 
@@ -108,10 +109,16 @@ def flatten_implementations(prog: List[Statement]) -> List[Statement]:
         for stmt in prog:
             visit_statement(stmt, ctx)
 
-        return cast(List[Statement], ctx.implementations)
+        return (
+            cast(List[Statement], ctx.extern_crates) + 
+            cast(List[Statement], ctx.implementations)
+        )
 
     def visit_statement(stmt: Statement, ctx: FlattenImplsContext):
         match stmt:
+            case ExternCrate() as crate:
+                if crate not in ctx.extern_crates:
+                    ctx.extern_crates.append(crate)
             case ContinuationAssignment() as ass:
                 visit_assignment(ass, ctx)
             case _:

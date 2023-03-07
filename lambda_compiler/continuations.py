@@ -73,6 +73,8 @@ def compute_continuations(prog: List[Statement]) -> List[Statement]:
 
     def visit_statement(stmt: Statement) -> Statement:
         match stmt:
+            case ExternCrate():
+                return stmt
             case PathAssignment() as ass:
                 return visit_assignment(ass)
             case _:

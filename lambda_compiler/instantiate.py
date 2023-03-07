@@ -141,6 +141,8 @@ def instantiate_implementations(prog: List[Statement]) -> List[Statement]:
 
     def visit_statement_find_impls(stmt: Statement, ctx: InstantiateContext):
         match stmt:
+            case ExternCrate():
+                pass
             case Implementation() as impl:
                 visit_implementation_find_impls(impl, ctx)
             case _:
@@ -151,6 +153,8 @@ def instantiate_implementations(prog: List[Statement]) -> List[Statement]:
 
     def visit_statement_instantiate(stmt: Statement, ctx: InstantiateContext):
         match stmt:
+            case ExternCrate():
+                pass
             case Implementation() as impl:
                 visit_implementation_instantiate(impl, ctx)
             case _:

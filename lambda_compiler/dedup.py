@@ -30,10 +30,10 @@ class DedupImplementationsError(Exception):
 
 @dataclass
 class DedupImplementationsContext:
+    extern_crates: List[ExternCrate] = field(default_factory = list)
     implementations: List[Implementation] = field(default_factory = list)
     instances: List[Instance] = field(default_factory = list)
     definitions: List[InstanceDefinition] = field(default_factory = list)
-    program: List[Statement] = field(default_factory = list)
 
     inst_hash: Dict[Tuple[Path, int], tuple] = field(default_factory = dict)
     impl_hash: Dict[Tuple[Path, int, int], tuple] = field(default_factory = dict)
@@ -126,6 +126,9 @@ class DedupImplementationsContext:
         except DedupNotYetSeenError:
             return None
 
+    def hash_crate(self, crate: ExternCrate) -> tuple:
+        return ("crate", crate.name)
+
     def insert_impl(self, impl: Implementation, hash_value: tuple):
         self.impl_hash[self.impl_hash_key(impl)] = hash_value
         if hash_value not in self.impl_dedup:
@@ -141,12 +144,18 @@ class DedupImplementationsContext:
     def insert_inst_def(self, inst_def: InstanceDefinition):
         self.definitions.append(inst_def)
 
+    def insert_crate(self, crate: ExternCrate):
+        if crate not in self.extern_crates:
+            self.extern_crates.append(crate)
+
     def deduplicate(self, prog: List[Statement]):
         queue = prog[:]
         while len(queue) > 0:
             for stmt in queue[:]:
                 hash_value: Optional[tuple] = None
                 match stmt:
+                    case ExternCrate() as crate:
+                        hash_value = self.hash_crate(crate)
                     case Implementation() as impl:
                         hash_value = self.hash_impl(impl)
                     case Instance() as inst:
@@ -160,6 +169,8 @@ class DedupImplementationsContext:
                     queue.remove(stmt)
 
                 match stmt:
+                    case ExternCrate() as crate:
+                        self.insert_crate(crate)
                     case Implementation() as impl:
                         self.insert_impl(impl, hash_value)
                     case Instance() as inst:
@@ -182,6 +193,7 @@ def build_dedup_context(prog: List[Statement]) -> DedupImplementationsContext:
 
 def collect_dedup_context(ctx: DedupImplementationsContext, tree_shake: bool = False) -> List[Statement]:
     return (
+        cast(List[Statement], ctx.extern_crates) +
         cast(List[Statement], ctx.definitions) +
         cast(List[Statement], ctx.implementations) +
         cast(List[Statement], ctx.instances)
@@ -189,17 +201,18 @@ def collect_dedup_context(ctx: DedupImplementationsContext, tree_shake: bool = F
 
 def tree_shake_dedup_context(ctx: DedupImplementationsContext) -> List[Statement]:
     inst_counter: DefaultDict[Path, int] = defaultdict(int)
+    prog: List[Statement] = []
 
     def visit_inst_def(inst_def: InstanceDefinition, ctx: DedupImplementationsContext):
-        if inst_def in ctx.program:
+        if inst_def in prog:
             return
 
         visit_inst(inst_def.inst, ctx)
 
-        ctx.program.append(inst_def)
+        prog.append(inst_def)
 
     def visit_inst(inst: Instance, ctx: DedupImplementationsContext):
-        if inst in ctx.program:
+        if inst in prog:
             return
 
         visit_impl(inst.impl, ctx)
@@ -207,10 +220,10 @@ def tree_shake_dedup_context(ctx: DedupImplementationsContext) -> List[Statement
         for capture in inst.captures:
             visit_inst(capture, ctx)
 
-        ctx.program.append(inst)
+        prog.append(inst)
 
     def visit_impl(impl: Implementation, ctx: DedupImplementationsContext):
-        if impl in ctx.program:
+        if impl in prog:
             return
 
         match impl:
@@ -224,7 +237,7 @@ def tree_shake_dedup_context(ctx: DedupImplementationsContext) -> List[Statement
                 visit_lit(impl.arg, ctx)
                 visit_lit(impl.next, ctx)
 
-        ctx.program.append(impl)
+        prog.append(impl)
 
     def visit_lit(lit: ValueLiteral, ctx: DedupImplementationsContext):
         match lit:
@@ -235,17 +248,20 @@ def tree_shake_dedup_context(ctx: DedupImplementationsContext) -> List[Statement
                 impl, _ = ctx.dedup_impl(impl)
                 visit_impl(impl, ctx)
 
+    for crate in ctx.extern_crates:
+        prog.append(crate)
+
     for inst_def in ctx.definitions:
         visit_inst_def(inst_def, ctx)
 
-    for stmt in ctx.program:
+    for stmt in prog:
         if not isinstance(stmt, Instance):
             continue
 
         stmt.inst_id = inst_counter[stmt.path]
         inst_counter[stmt.path] += 1
 
-    return ctx.program
+    return prog
 
 def dedup_implementations(prog: List[Statement]) -> List[Statement]:
     ctx = build_dedup_context(prog)

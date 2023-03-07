@@ -84,6 +84,14 @@ def parse_mlir(s: str, file: str) -> List[Statement]:
             err(f"unknown impl {impl_path}!{lambda_id}!{continuation_id}")
         return impl_table[(impl_path, lambda_id, continuation_id)]
 
+    def parse_extern_crate() -> ExternCrate:
+        eat(Token.Extern)
+        eat(Token.Crate)
+        name = eat(Token.Ident)
+        eat(Token.SemiColon)
+
+        return ExternCrate(name)
+
     def parse_def() -> InstanceDefinition:
         is_public = False
         if cur == Token.Pub:
@@ -190,7 +198,9 @@ def parse_mlir(s: str, file: str) -> List[Statement]:
         return impl
 
     def parse_statement() -> Statement:
-        if cur == Token.Impl:
+        if cur == Token.Extern:
+            return parse_extern_crate()
+        elif cur == Token.Impl:
             return parse_impl()
         elif cur == Token.Inst:
             return parse_inst()

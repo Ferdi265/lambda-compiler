@@ -31,10 +31,8 @@ def rechain(prog: List[Statement]) -> List[Statement]:
     def visit_statement(stmt: Statement) -> Optional[Statement]:
         match stmt:
             case ExternCrate():
-                return None
-            case Extern():
-                return None
-            case PathAlias():
+                return stmt
+            case Extern() | PathAlias():
                 return None
             case PathAssignment(path, value, is_public, is_impure):
                 return PathAssignment(path, visit_chain(value), is_public, is_impure)

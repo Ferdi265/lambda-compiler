@@ -15,6 +15,8 @@ def renumber_captures(prog: List[Statement]) -> List[Statement]:
 
     def visit_statement(stmt: Statement) -> Statement:
         match stmt:
+            case ExternCrate():
+                return stmt
             case Implementation() as impl:
                 return visit_implementation(impl)
             case _:

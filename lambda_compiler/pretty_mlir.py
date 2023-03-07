@@ -10,6 +10,8 @@ def pretty_mlir(prog: List[Statement], file: TextIO = sys.stdout):
 
     def visit_statement(stmt: Statement):
         match stmt:
+            case ExternCrate() as crate:
+                visit_extern_crate(crate)
             case Implementation() as impl:
                 visit_implementation(impl)
             case Instance() as inst:
@@ -18,6 +20,9 @@ def pretty_mlir(prog: List[Statement], file: TextIO = sys.stdout):
                 visit_instance_definition(inst_def)
             case _:
                 raise PrettyMLIRError(f"unexpected AST node encountered: {stmt}")
+
+    def visit_extern_crate(crate: ExternCrate):
+        print(f"extern crate {crate.name};", file=file)
 
     def visit_implementation(impl: Implementation):
         assert impl.arg_literal is None or impl.arg_literal == AnonymousLiteral(0)
