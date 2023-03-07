@@ -18,7 +18,7 @@ C_SRC       := $(wildcard src/*.c)
 OBJECTS     := $(MAIN_LL:build/%.ll=build/%.ll.o) $(LANG_SRC:src/%.lambda=build/%.ll.o) $(C_SRC:src/%.c=build/%.c.o)
 
 .PHONY: all clean
-all: build/$(TARGET)
+all: build/$(TARGET) build/$(TARGET).stripped
 
 clean:
 	rm -rf build
@@ -48,3 +48,6 @@ build/%.c.o: src/%.c
 
 build/$(TARGET): $(OBJECTS)
 	$(CC) $(C_LINK) $(C_FLAGS) -o $@ $^
+
+build/$(TARGET).stripped: build/$(TARGET)
+	strip -s -o $@ $^
