@@ -52,10 +52,10 @@ class InstantiateContext:
         self.inst_id_table[path] += 1
         return id
 
-    def instantiate(self, impl: Implementation, captures: List[Instance]) -> Instance:
+    def instantiate(self, path: Path, impl: Implementation, captures: List[Instance]) -> Instance:
         captures = [captures[i] for i in impl.anonymous_captures]
 
-        inst: Instance = Instance(impl.path, self.next_inst_id(impl.path), impl, captures)
+        inst: Instance = Instance(path, self.next_inst_id(path), impl, captures)
         self.inst_table[(inst.path, inst.inst_id)] = inst
         self.impl_inst_table[(impl.path, impl.lambda_id, impl.continuation_id)] = inst
 
@@ -81,37 +81,39 @@ class InstantiateContext:
         self.dedup.insert_inst_def(inst_def)
 
     def evaluate_stack(self, impl: Implementation) -> Instance:
+        path = impl.path
+
         stack: List[Instance] = []
-        fn, arg = self.evaluate_impl(impl, [], stack)
+        fn, arg = self.evaluate_impl(path, impl, [], stack)
         while fn is not None or len(stack) > 0:
             if fn is None:
                 fn = stack.pop()
-            fn, arg = self.evaluate_inst(fn, arg, stack)
+            fn, arg = self.evaluate_inst(path, fn, arg, stack)
 
         return arg
 
-    def evaluate_inst(self, inst: Instance, arg: Instance, stack: List[Instance]) -> Tuple[Optional[Instance], Instance]:
-        return self.evaluate_impl(inst.impl, [arg] + inst.captures, stack)
+    def evaluate_inst(self, path: Path, inst: Instance, arg: Instance, stack: List[Instance]) -> Tuple[Optional[Instance], Instance]:
+        return self.evaluate_impl(path, inst.impl, [arg] + inst.captures, stack)
 
-    def evaluate_impl(self, impl: Implementation, captures: List[Instance], stack: List[Instance]) -> Tuple[Optional[Instance], Instance]:
+    def evaluate_impl(self, path: Path, impl: Implementation, captures: List[Instance], stack: List[Instance]) -> Tuple[Optional[Instance], Instance]:
         impl = self.resolve_impl(impl)
         match impl:
             case ReturnImplementation() as impl:
-                return None, self.evaluate_literal(impl.value, captures)
+                return None, self.evaluate_literal(path, impl.value, captures)
             case TailCallImplementation() as impl:
-                fn = self.evaluate_literal(impl.fn, captures)
-                arg = self.evaluate_literal(impl.arg, captures)
+                fn = self.evaluate_literal(path, impl.fn, captures)
+                arg = self.evaluate_literal(path, impl.arg, captures)
                 return fn, arg
             case ContinueCallImplementation() as impl:
-                fn = self.evaluate_literal(impl.fn, captures)
-                arg = self.evaluate_literal(impl.arg, captures)
-                next = self.evaluate_literal(impl.next, captures)
+                fn = self.evaluate_literal(path, impl.fn, captures)
+                arg = self.evaluate_literal(path, impl.arg, captures)
+                next = self.evaluate_literal(path, impl.next, captures)
                 stack.append(next)
                 return fn, arg
             case _:
                 raise InstantiateError(f"unexpected AST node encountered: {impl}")
 
-    def evaluate_literal(self, lit: ValueLiteral, captures: List[Instance]) -> Instance:
+    def evaluate_literal(self, path: Path, lit: ValueLiteral, captures: List[Instance]) -> Instance:
         match lit:
             case PathLiteral(PathGlobal(path)):
                 return self.resolve_path_global(path)
@@ -120,7 +122,7 @@ class InstantiateContext:
             case InstanceLiteral(inst):
                 return inst
             case ImplementationLiteral(impl):
-                return self.instantiate(impl, captures)
+                return self.instantiate(path, impl, captures)
             case _:
                 raise InstantiateError(f"unexpected AST node encountered: {lit}")
 
@@ -169,7 +171,7 @@ def instantiate_implementations(prog: List[Statement]) -> List[Statement]:
                 raise InstantiateError(f"unexpected AST node encountered: {impl}")
 
         if len(impl.anonymous_captures) == 0:
-            ctx.instantiate(impl, [])
+            ctx.instantiate(impl.path, impl, [])
 
         if impl.lambda_id == 0 and impl.continuation_id == 0:
             ctx.evaluate_definition(impl)
@@ -182,7 +184,7 @@ def instantiate_implementations(prog: List[Statement]) -> List[Statement]:
             case ImplementationLiteral(impl):
                 impl = ctx.resolve_impl(impl)
                 if len(impl.anonymous_captures) == 0:
-                    return InstanceLiteral(ctx.instantiate(impl, []))
+                    return InstanceLiteral(ctx.instantiate(impl.path, impl, []))
 
         return lit
 
