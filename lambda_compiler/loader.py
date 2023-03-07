@@ -18,6 +18,7 @@ class NopLoader(Loader):
 @dataclass
 class CratePathLoader(Loader):
     crate_path: List[str]
+    allow_hlir: bool = True
 
     def initial_crate_name_and_dir(self, file_path: str) -> CrateInfo:
         file_name = os.path.basename(file_path)
@@ -51,12 +52,12 @@ class CratePathLoader(Loader):
         for dir in self.crate_path:
             crate_src = os.path.join(dir, f"{crate}.hlis")
             is_hlis = True
-            if os.path.isfile(crate_src):
+            if self.allow_hlir and os.path.isfile(crate_src):
                 break
 
             crate_src = os.path.join(dir, f"{crate}.hlir")
             is_hlis = True
-            if os.path.isfile(crate_src):
+            if self.allow_hlir and os.path.isfile(crate_src):
                 break
 
             crate_src = os.path.join(dir, f"{crate}.lambda")

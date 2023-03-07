@@ -43,12 +43,12 @@ def main():
     if output_dir is None:
         output_dir = "."
 
-    loader = CratePathLoader(crate_path)
+    loader = CratePathLoader(crate_path, allow_hlir = False)
     ast, root = collect_crate(infile, loader)
     crate_order = root.crate_order()
 
     with sys.stdout if outfile == "-" else open(outfile, "w") as f:
-        pretty_make_deps(crate_order, output_dir, file=f)
+        pretty_make_deps(crate_order, outfile, output_dir, file=f)
 
 if __name__ == "__main__":
     main()
