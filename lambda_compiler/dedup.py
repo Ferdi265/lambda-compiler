@@ -199,11 +199,14 @@ def collect_dedup_context(ctx: DedupImplementationsContext, tree_shake: bool = F
         cast(List[Statement], ctx.instances)
     )
 
-def tree_shake_dedup_context(ctx: DedupImplementationsContext) -> List[Statement]:
+def tree_shake_dedup_context(ctx: DedupImplementationsContext, opt_deps: Optional[List[Statement]] = None) -> List[Statement]:
     inst_counter: DefaultDict[Path, int] = defaultdict(int)
     prog: List[Statement] = []
+    deps = opt_deps or []
 
     def visit_inst_def(inst_def: InstanceDefinition, ctx: DedupImplementationsContext):
+        if inst_def in deps:
+            return
         if inst_def in prog:
             return
 
@@ -212,6 +215,8 @@ def tree_shake_dedup_context(ctx: DedupImplementationsContext) -> List[Statement
         prog.append(inst_def)
 
     def visit_inst(inst: Instance, ctx: DedupImplementationsContext):
+        if inst in deps:
+            return
         if inst in prog:
             return
 
@@ -223,6 +228,8 @@ def tree_shake_dedup_context(ctx: DedupImplementationsContext) -> List[Statement
         prog.append(inst)
 
     def visit_impl(impl: Implementation, ctx: DedupImplementationsContext):
+        if impl in deps:
+            return
         if impl in prog:
             return
 
@@ -263,6 +270,7 @@ def tree_shake_dedup_context(ctx: DedupImplementationsContext) -> List[Statement
 
     return prog
 
-def dedup_implementations(prog: List[Statement]) -> List[Statement]:
-    ctx = build_dedup_context(prog)
-    return tree_shake_dedup_context(ctx)
+def dedup_implementations(prog: List[Statement], opt_deps: Optional[List[Statement]] = None) -> List[Statement]:
+    deps = opt_deps or []
+    ctx = build_dedup_context(deps + prog)
+    return tree_shake_dedup_context(ctx, deps)

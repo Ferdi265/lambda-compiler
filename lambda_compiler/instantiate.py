@@ -126,23 +126,25 @@ class InstantiateContext:
             case _:
                 raise InstantiateError(f"unexpected AST node encountered: {lit}")
 
-def instantiate_implementations(prog: List[Statement]) -> List[Statement]:
+def instantiate_implementations(prog: List[Statement], deps: List[Statement]) -> List[Statement]:
     def visit_program(prog: List[Statement]) -> List[Statement]:
-        dedup = build_dedup_context(prog)
+        dedup = build_dedup_context(deps + prog)
         ctx = InstantiateContext(dedup)
 
-        for stmt in prog:
+        for stmt in deps + prog:
             visit_statement_find_impls(stmt, ctx)
 
         for stmt in prog:
             visit_statement_instantiate(stmt, ctx)
 
-        return tree_shake_dedup_context(ctx.dedup)
+        return tree_shake_dedup_context(ctx.dedup, deps)
 
     def visit_statement_find_impls(stmt: Statement, ctx: InstantiateContext):
         match stmt:
-            case ExternCrate():
+            case ExternCrate() | Instance():
                 pass
+            case InstanceDefinition() as inst:
+                ctx.def_table[inst.path] = inst
             case Implementation() as impl:
                 visit_implementation_find_impls(impl, ctx)
             case _:
