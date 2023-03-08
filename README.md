@@ -13,11 +13,12 @@ A Lambda Calculus to LLVM IR compiler
 
 ## Compilation
 
-Compilation is done in four steps:
+Compilation is done in five steps:
 
+- collect GNU Make dependency information for a Lambda crate (`lambda-lang2deps`)
 - collect a whole Lambda crate into one file, resolve names and macros (`lambda-lang2hlir`)
 - compile Lambda calculus expressions to simple returns, tail calls, and calls, with explicit captures (`lambda-hlir2mlir`)
-- translate the resulting intermediate language to LLVM IR (`lambda-mlir2llir`) and generate a main function (`lambda-llir2main`)
+- translate the resulting intermediate language to LLVM IR (`lambda-mlir2llir`) and generate a main function (`lambda-mlir2main`)
 - compile the resulting LLVM IR together with the runtime and external IO routines into a program (`clang`)
 
 ## Language
