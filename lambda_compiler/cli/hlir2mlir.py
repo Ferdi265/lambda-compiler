@@ -53,7 +53,7 @@ def main():
     ast = flatten_implementations(ast)
     ast = renumber_captures(ast)
     loader = CratePathLoader(crate_path)
-    deps_ast, crates = collect_mlir_deps(crate, ast, loader)
+    deps_ast, crates = collect_mlir_deps(crate, ast, loader, collect_first=False)
     deps_ast = resolve_mlir(deps_ast)
     ast = instantiate_implementations(ast, deps_ast)
 

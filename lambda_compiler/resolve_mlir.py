@@ -69,20 +69,21 @@ def resolve_mlir(prog: List[Statement], deps: Optional[List[Statement]] = None) 
             impl.path.path, impl.path.lambda_id, impl.path.continuation_id,
             AnonymousLiteral(0), [], impl.captures, False
         )
+        new_impl: Implementation
         match impl:
             case MReturnImplementation():
-                return ReturnImplementation(
+                new_impl = ReturnImplementation(
                     *impl_metadata,
                     visit_literal(impl.value)
                 )
             case MTailCallImplementation():
-                return TailCallImplementation(
+                new_impl = TailCallImplementation(
                     *impl_metadata,
                     visit_literal(impl.fn),
                     visit_literal(impl.arg)
                 )
             case MContinueCallImplementation():
-                return ContinueCallImplementation(
+                new_impl = ContinueCallImplementation(
                     *impl_metadata,
                     visit_literal(impl.fn),
                     visit_literal(impl.arg),
@@ -91,11 +92,12 @@ def resolve_mlir(prog: List[Statement], deps: Optional[List[Statement]] = None) 
             case _:
                 raise ResolveMLIRError(f"unexpected AST node encountered: {impl}")
 
+        impl_table[impl.path] = new_impl
+        return new_impl
+
     def visit_literal(lit: ValueLiteral) -> ValueLiteral:
         match lit:
-            case IdentLiteral(ExternGlobal(name)):
-                return lit
-            case PathLiteral(PathGlobal(path)):
+            case AnonymousLiteral() | IdentLiteral() | PathLiteral():
                 return lit
             case MInstanceLiteral(inst):
                 return InstanceLiteral(inst_table[inst])
