@@ -18,6 +18,7 @@ from .dedup import *
 from .instantiate import *
 from .pretty_mlir import *
 from .parse_mlir import *
+from .collect_mlir import *
 from .llir import *
 from .pretty import *
 from .search_path import *

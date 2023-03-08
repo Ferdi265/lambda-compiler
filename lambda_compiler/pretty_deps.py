@@ -3,6 +3,9 @@ import os.path
 import sys
 
 def pretty_make_deps(crate_order: List[ModuleNamespace], outfile: str, output_dir: str, file: TextIO = sys.stdout):
+    def get_name(mod: ModuleNamespace) -> str:
+        return mod.get_name()
+
     def get_lambda(mod: ModuleNamespace) -> str:
         return mod.src
 
@@ -29,6 +32,15 @@ def pretty_make_deps(crate_order: List[ModuleNamespace], outfile: str, output_di
         mlir_crate_deps = list(map(get_mlir, mod_crate_deps))
         print(f"{mlir_src}: {hlir_src} | {outfile} {' '.join(mlir_crate_deps)}", end="\n\n", file=file)
 
+        llir_src = os.path.join(output_dir, mod_name + ".ll")
+        print(f"{llir_src}: {mlir_src}", end="\n\n", file=file)
+
         all_mod_deps += list(map(get_lambda, mod_submod_deps))
+
+    crate_name = get_name(crate_order[0])
+    llir_main_src = os.path.join(output_dir, crate_name + ".main.ll")
+    mlir_main_src = os.path.join(output_dir, crate_name + ".mlir")
+    llir_crate_deps = list(map(get_mlir, crate_order[1:]))
+    print(f"{llir_main_src}: {mlir_main_src} | {' '.join(llir_crate_deps)}", end="\n\n", file=file)
 
     print(f"{outfile}: | {' '.join(all_mod_deps)}", end="\n\n", file=file)

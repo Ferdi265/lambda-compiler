@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from collections import defaultdict
 from typing import *
 
-from .dedup import *
+from .parse_mlir import *
 from .target import *
 from .llir_runtime import *
 
@@ -53,30 +53,31 @@ class ImplConstruction(RealizedLiteral):
 class ValueUses:
     capture_uses: DefaultDict[int, int] = field(default_factory = lambda: defaultdict(int))
     extern_uses: DefaultDict[str, int] = field(default_factory = lambda: defaultdict(int))
-    inst_uses: DefaultDict[Tuple[Path, int], int] = field(default_factory = lambda: defaultdict(int))
+    inst_uses: DefaultDict[InstancePath, int] = field(default_factory = lambda: defaultdict(int))
     global_uses: DefaultDict[Path, int] = field(default_factory = lambda: defaultdict(int))
 
-    inst_table: Dict[Tuple[Path, int], Instance] = field(default_factory = dict)
 
     @staticmethod
-    def count_uses(impl: Implementation) -> ValueUses:
+    def count_uses(impl: MImplementation) -> ValueUses:
         uses = ValueUses()
 
         uses.capture_uses[0] = 0
         uses.count_impl(impl)
         return uses
 
-    def count_impl(self, impl: Implementation):
+    def count_impl(self, impl: MImplementation):
         match impl:
-            case ReturnImplementation() as impl:
+            case MReturnImplementation() as impl:
                 self.count_lit(impl.value)
-            case TailCallImplementation() as impl:
+            case MTailCallImplementation() as impl:
                 self.count_lit(impl.fn)
                 self.count_lit(impl.arg)
-            case ContinueCallImplementation() as impl:
+            case MContinueCallImplementation() as impl:
                 self.count_lit(impl.fn)
                 self.count_lit(impl.arg)
                 self.count_lit(impl.next)
+            case _:
+                raise GenerateLLIRError(f"unexpected AST node encountered: {impl}")
 
     def count_lit(self, lit: ValueLiteral):
         match lit:
@@ -84,20 +85,18 @@ class ValueUses:
                 self.capture_uses[id] += 1
             case IdentLiteral(ExternGlobal(ident)):
                 self.extern_uses[ident] += 1
-            case InstanceLiteral(inst):
-                self.inst_uses[(inst.path, inst.inst_id)] += 1
-                self.inst_table[(inst.path, inst.inst_id)] = inst
-            case ImplementationLiteral(impl):
+            case MInstanceLiteral(inst):
+                self.inst_uses[inst] += 1
+            case MImplementationLiteral(impl):
                 self.count_impl_construction(impl)
             case PathLiteral(PathGlobal(path)):
                 self.global_uses[path] += 1
+            case _:
+                raise GenerateLLIRError(f"unexpected AST node encountered: {lit}")
 
-    def count_impl_construction(self, impl: Implementation):
-        for id in impl.anonymous_captures:
+    def count_impl_construction(self, impl: MImplementation):
+        for id in impl.captures:
             self.capture_uses[id] += 1
-
-    def get_instance(self, key: Tuple[Path, int]) -> Instance:
-        return self.inst_table[key]
 
 @dataclass
 class GenerateLLIRContext:
@@ -107,7 +106,7 @@ class GenerateLLIRContext:
     instance_type_cache: OrderedSet[int] = field(default_factory = OrderedSet)
     extern_cache: OrderedSet[str] = field(default_factory = OrderedSet)
     global_cache: OrderedSet[Path] = field(default_factory = OrderedSet)
-    init_cache: List[InstanceDefinition] = field(default_factory = list)
+    init_cache: List[MInstanceDefinition] = field(default_factory = list)
 
     def mangle_crate_init(self, crate: str) -> str:
         return f"_L{len(crate)}I{crate}"
@@ -118,21 +117,21 @@ class GenerateLLIRContext:
     def mangle_path(self, path: Path) -> str:
         return "_L" + "".join(f"{len(name)}N{name}" for name in path.components)
 
-    def mangle_def(self, inst_def: InstanceDefinition) -> str:
+    def mangle_def(self, inst_def: MInstanceDefinition) -> str:
         return f"{self.mangle_path(inst_def.path)}"
 
-    def mangle_inst(self, inst: Instance, alt: bool) -> str:
+    def mangle_inst(self, inst: InstancePath, alt: bool) -> str:
         alt_str = "X" if alt else ""
         return f"{self.mangle_path(inst.path)}G{inst.inst_id}{alt_str}"
 
-    def mangle_impl(self, impl: Implementation) -> str:
+    def mangle_impl(self, impl: ImplementationPath) -> str:
         return f"{self.mangle_path(impl.path)}L{impl.lambda_id}I{impl.continuation_id}"
 
     def mangle_lit(self, lit: ValueLiteral) -> str:
         match lit:
             case AnonymousLiteral(id):
                 return f"%{id}"
-            case InstanceLiteral(inst):
+            case MInstanceLiteral(inst):
                 return f"@{self.mangle_inst(inst, alt=False)}"
             case _:
                 raise GenerateLLIRError(f"unexpected literal type: {lit}")
@@ -187,7 +186,7 @@ class GenerateLLIRContext:
                 return self.write_load_extern(index_factory, name)
             case PathLiteral(PathGlobal(path)):
                 return self.write_load_global(index_factory, path)
-            case InstanceLiteral(inst):
+            case MInstanceLiteral(inst):
                 return lit
             case _:
                 raise GenerateLLIRError(f"unexpected literal type: {lit}")
@@ -278,7 +277,7 @@ class GenerateLLIRContext:
             ptr_align = self.arch.ptr_align
         )
 
-    def write_store_impl(self, index_factory: IndexFactory, impl: Implementation, lamb: ValueLiteral):
+    def write_store_impl(self, index_factory: IndexFactory, impl: MImplementation, lamb: ValueLiteral):
         ptr_index = index_factory.next()
         self.llir += "    {ptr_index} = getelementptr inbounds %lambda, %lambda* {lamb}, i{ptr_bits} 0, i32 0, i32 3\n".format(
             lamb = self.mangle_lit(lamb),
@@ -286,7 +285,7 @@ class GenerateLLIRContext:
             ptr_bits = self.arch.ptr_size * 8
         )
         self.llir += "    store %lambda_fn* @{impl_path}, %lambda_fn** {ptr_index}, align {ptr_align}\n".format(
-            impl_path = self.mangle_impl(impl),
+            impl_path = self.mangle_impl(impl.path),
             ptr_index = self.mangle_lit(ptr_index),
             ptr_align = self.arch.ptr_align
         )
@@ -325,8 +324,9 @@ class GenerateLLIRContext:
         index_factory.next()
 
         for inst_def in self.init_cache:
-            self.write_lambda_ref(InstanceLiteral(inst_def.inst), 1)
-            index = self.write_lambda_null_call(index_factory, InstanceLiteral(inst_def.inst))
+            lit = MInstanceLiteral(inst_def.inst)
+            self.write_lambda_ref(lit, 1)
+            index = self.write_lambda_null_call(index_factory, lit)
             self.write_store_global(index_factory, inst_def.path, index)
 
         self.llir += "    ret void\n"
@@ -358,16 +358,16 @@ def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
 
         for stmt in prog:
             match stmt:
-                case InstanceDefinition() as inst_def:
+                case MInstanceDefinition() as inst_def:
                     ctx.declare_global(inst_def.path)
 
         for stmt in prog:
             match stmt:
-                case InstanceDefinition() as inst_def:
+                case MInstanceDefinition() as inst_def:
                     visit_definition(inst_def, ctx)
-                case Instance() as inst:
+                case MInstance() as inst:
                     visit_instance(inst, ctx)
-                case Implementation() as impl:
+                case MImplementation() as impl:
                     visit_implementation(impl, ctx)
 
             ctx.llir += "\n"
@@ -376,7 +376,7 @@ def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
 
         return ctx.llir
 
-    def visit_definition(inst_def: InstanceDefinition, ctx: GenerateLLIRContext):
+    def visit_definition(inst_def: MInstanceDefinition, ctx: GenerateLLIRContext):
         ctx.llir += f"@{ctx.mangle_def(inst_def)} = "
 
         if not inst_def.is_public:
@@ -392,13 +392,13 @@ def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
 
         ctx.llir += f", align {ctx.arch.ptr_align}\n"
 
-    def visit_instance(inst: Instance, ctx: GenerateLLIRContext):
+    def visit_instance(inst: MInstance, ctx: GenerateLLIRContext):
         inst_type = ctx.write_instance_type(len(inst.captures))
 
         ctx.llir += "@{inst_path_alt} = private dso_local unnamed_addr global {inst_type} {{ %lambda_header {{ i{ptr_bits} 1, i{ptr_bits} {captures}, i{ptr_bits} 0, %lambda_fn* @{impl_path} }}, [ {captures} x %lambda* ] [".format(
             ptr_bits = ctx.arch.ptr_size * 8,
             inst_type = inst_type,
-            inst_path_alt = ctx.mangle_inst(inst, alt = True),
+            inst_path_alt = ctx.mangle_inst(inst.path, alt = True),
             impl_path = ctx.mangle_impl(inst.impl),
             captures = len(inst.captures),
         )
@@ -409,11 +409,11 @@ def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
 
         ctx.llir += "@{inst_path} = internal dso_local alias %lambda, %lambda* bitcast({inst_type}* @{inst_path_alt} to %lambda*)\n".format(
             inst_type = inst_type,
-            inst_path = ctx.mangle_inst(inst, alt = False),
-            inst_path_alt = ctx.mangle_inst(inst, alt = True),
+            inst_path = ctx.mangle_inst(inst.path, alt = False),
+            inst_path_alt = ctx.mangle_inst(inst.path, alt = True),
         )
 
-    def visit_implementation(impl: Implementation, ctx: GenerateLLIRContext):
+    def visit_implementation(impl: MImplementation, ctx: GenerateLLIRContext):
         uses = ValueUses.count_uses(impl)
 
         for name in uses.extern_uses.keys():
@@ -423,7 +423,7 @@ def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
             ctx.write_global(path)
 
         ctx.llir += "define internal dso_local %lambda* @{impl_path}(%lambda* %0, %lambda* %1, %lambda_cont* %2) unnamed_addr {{\n".format(
-            impl_path = ctx.mangle_impl(impl)
+            impl_path = ctx.mangle_impl(impl.path)
         )
 
         index_factory = IndexFactory()
@@ -441,9 +441,8 @@ def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
                 lit = ctx.write_load_capture(index_factory, capture_index - 1)
                 ctx.write_lambda_ref(lit, refcount)
 
-        for inst_key, refcount in uses.inst_uses.items():
-            inst = uses.get_instance(inst_key)
-            ctx.write_lambda_ref(InstanceLiteral(inst), refcount)
+        for inst, refcount in uses.inst_uses.items():
+            ctx.write_lambda_ref(MInstanceLiteral(inst), refcount)
 
         for name, refcount in uses.extern_uses.items():
             lit = ctx.write_load_extern(index_factory, name)
@@ -458,13 +457,13 @@ def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
 
         ret_lit: ValueLiteral
         match impl:
-            case ReturnImplementation() as impl:
+            case MReturnImplementation() as impl:
                 value_r = visit_literal(impl.value, index_factory, ctx)
                 value = ctx.write_load_realized_literal(value_r, index_factory)
 
                 ctx.write_lambda_unref(IndexFactory.SELF)
                 ret_lit = ctx.write_lambda_cont_call(index_factory, value)
-            case TailCallImplementation() as impl:
+            case MTailCallImplementation() as impl:
                 fn_r = visit_literal(impl.fn, index_factory, ctx)
                 arg_r = visit_literal(impl.arg, index_factory, ctx)
                 fn = ctx.write_load_realized_literal(fn_r, index_factory)
@@ -472,7 +471,7 @@ def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
 
                 ctx.write_lambda_unref(IndexFactory.SELF)
                 ret_lit = ctx.write_lambda_call(index_factory, fn, arg, IndexFactory.CONT)
-            case ContinueCallImplementation() as impl:
+            case MContinueCallImplementation() as impl:
                 fn_r = visit_literal(impl.fn, index_factory, ctx)
                 arg_r = visit_literal(impl.arg, index_factory, ctx)
                 next_r = visit_literal(impl.next, index_factory, ctx)
@@ -483,17 +482,19 @@ def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
                 cont = ctx.write_lambda_cont_alloc(index_factory, next)
                 ctx.write_lambda_unref(IndexFactory.SELF)
                 ret_lit = ctx.write_lambda_call(index_factory, fn, arg, cont)
+            case _:
+                raise GenerateLLIRError("unexpected AST node encountered: {impl}")
 
         ctx.llir += f"    ret %lambda* {ctx.mangle_lit(ret_lit)}\n"
         ctx.llir += "}\n"
 
     def visit_literal(lit: ValueLiteral, index_factory: IndexFactory, ctx: GenerateLLIRContext) -> RealizedLiteral:
         match lit:
-            case ImplementationLiteral(impl):
-                lamb = ctx.write_lambda_alloc(index_factory, len(impl.anonymous_captures))
+            case MImplementationLiteral(impl):
+                lamb = ctx.write_lambda_alloc(index_factory, len(impl.captures))
                 ctx.write_store_impl(index_factory, impl, lamb)
 
-                for dest_index, id in enumerate(impl.anonymous_captures):
+                for dest_index, id in enumerate(impl.captures):
                     value = ctx.write_load_literal(AnonymousLiteral(id), index_factory)
 
                     ctx.write_store_capture(index_factory, value, lamb, dest_index)

@@ -5,12 +5,61 @@ from .instantiate import *
 
 import string
 
+@dataclass(frozen=True)
+class InstancePath:
+    path: Path
+    inst_id: int
+
+@dataclass(frozen=True)
+class ImplementationPath:
+    path: Path
+    lambda_id: int
+    continuation_id: int
+
+@dataclass
+class MInstanceDefinition(Statement):
+    path: Path
+    inst: InstancePath
+    needs_init: bool
+    is_public: bool
+
+@dataclass
+class MInstance(Statement):
+    path: InstancePath
+    impl: ImplementationPath
+    captures: List[InstancePath]
+
+@dataclass
+class MImplementation(Statement):
+    path: ImplementationPath
+    captures: List[int]
+
+@dataclass
+class MReturnImplementation(MImplementation):
+    value: ValueLiteral
+
+@dataclass
+class MTailCallImplementation(MImplementation):
+    fn: ValueLiteral
+    arg: ValueLiteral
+
+@dataclass
+class MContinueCallImplementation(MImplementation):
+    fn: ValueLiteral
+    arg: ValueLiteral
+    next: ValueLiteral
+
+@dataclass
+class MInstanceLiteral(ValueLiteral):
+    inst: InstancePath
+
+@dataclass
+class MImplementationLiteral(ValueLiteral):
+    impl: MImplementation
+
 def parse_mlir(s: str, file: str) -> List[Statement]:
     tokens = tokenize(s)
     cur, curs, line, col = Token.End, "", 1, 1
-
-    inst_table: Dict[Tuple[Path, int], Instance] = {}
-    impl_table: Dict[Tuple[Path, int, int], Implementation] = {}
 
     def drop():
         nonlocal cur, curs, line, col
@@ -48,7 +97,7 @@ def parse_mlir(s: str, file: str) -> List[Statement]:
         except ValueError:
             err(f"invalid number {num_str!r}")
 
-    def parse_inst_path(path: Optional[Path] = None) -> Tuple[Path, int]:
+    def parse_inst_path(path: Optional[Path] = None) -> InstancePath:
         if path is None:
             inst_path = parse_path()
         else:
@@ -57,9 +106,9 @@ def parse_mlir(s: str, file: str) -> List[Statement]:
         eat(Token.InstSep)
         inst_id = parse_num()
 
-        return inst_path, inst_id
+        return InstancePath(inst_path, inst_id)
 
-    def parse_impl_path(path: Optional[Path] = None) -> Tuple[Path, int, int]:
+    def parse_impl_path(path: Optional[Path] = None) -> ImplementationPath:
         if path is None:
             impl_path = parse_path()
         else:
@@ -70,19 +119,7 @@ def parse_mlir(s: str, file: str) -> List[Statement]:
         eat(Token.ImplSep)
         continuation_id = parse_num()
 
-        return impl_path, lambda_id, continuation_id
-
-    def lookup_inst(path: Optional[Path] = None) -> Instance:
-        inst_path, inst_id = parse_inst_path(path)
-        if (inst_path, inst_id) not in inst_table:
-            err(f"unknown instance {inst_path}%{inst_id}")
-        return inst_table[(inst_path, inst_id)]
-
-    def lookup_impl(path: Optional[Path] = None) -> Implementation:
-        impl_path, lambda_id, continuation_id = parse_impl_path(path)
-        if (impl_path, lambda_id, continuation_id) not in impl_table:
-            err(f"unknown impl {impl_path}!{lambda_id}!{continuation_id}")
-        return impl_table[(impl_path, lambda_id, continuation_id)]
+        return ImplementationPath(impl_path, lambda_id, continuation_id)
 
     def parse_extern_crate() -> ExternCrate:
         eat(Token.Extern)
@@ -92,7 +129,7 @@ def parse_mlir(s: str, file: str) -> List[Statement]:
 
         return ExternCrate(name)
 
-    def parse_def() -> InstanceDefinition:
+    def parse_def() -> MInstanceDefinition:
         is_public = False
         if cur == Token.Pub:
             eat()
@@ -101,7 +138,7 @@ def parse_mlir(s: str, file: str) -> List[Statement]:
         path = parse_path()
         eat(Token.Assign)
 
-        inst = lookup_inst()
+        inst = parse_inst_path()
 
         needs_init = False
         if cur == Token.NullCall:
@@ -109,26 +146,23 @@ def parse_mlir(s: str, file: str) -> List[Statement]:
             needs_init = True
 
         eat(Token.SemiColon)
-        return InstanceDefinition(path, inst, needs_init, is_public)
+        return MInstanceDefinition(path, inst, needs_init, is_public)
 
-    def parse_inst() -> Instance:
+    def parse_inst() -> MInstance:
         eat(Token.Inst)
-        inst_path, inst_id = parse_inst_path()
+        inst = parse_inst_path()
         eat(Token.Assign)
 
-        impl = lookup_impl()
+        impl = parse_impl_path()
 
         captures = []
         eat(Token.CaptureOpen)
         while cur != Token.CaptureClose:
-            captures.append(lookup_inst())
+            captures.append(parse_inst_path())
         eat(Token.CaptureClose)
 
         eat(Token.SemiColon)
-        inst = Instance(inst_path, inst_id, impl, captures)
-
-        inst_table[(inst_path, inst_id)] = inst
-        return inst
+        return MInstance(inst, impl, captures)
 
     def parse_value_lit(captures: OrderedSet[int]) -> ValueLiteral:
         if cur == Token.CapturePrefix:
@@ -143,10 +177,10 @@ def parse_mlir(s: str, file: str) -> List[Statement]:
 
         path = parse_path(name)
         if cur == Token.InstSep:
-            inst = lookup_inst(path)
-            return InstanceLiteral(inst)
+            inst = parse_inst_path(path)
+            return MInstanceLiteral(inst)
         elif cur == Token.ImplSep:
-            impl_path, lambda_id, continuation_id = parse_impl_path(path)
+            impl_path = parse_impl_path(path)
 
             impl_captures: List[int] = []
             eat(Token.CaptureOpen)
@@ -157,15 +191,14 @@ def parse_mlir(s: str, file: str) -> List[Statement]:
                 impl_captures.append(id)
             eat(Token.CaptureClose)
 
-            impl = Implementation(impl_path, lambda_id, continuation_id, AnonymousLiteral(0), [], impl_captures, False)
-            return ImplementationLiteral(impl)
+            impl = MImplementation(impl_path, impl_captures)
+            return MImplementationLiteral(impl)
         else:
             return PathLiteral(PathGlobal(path))
 
-
-    def parse_impl() -> Implementation:
+    def parse_impl() -> MImplementation:
         eat(Token.Impl)
-        impl_path, lambda_id, continuation_id = parse_impl_path()
+        impl_path = parse_impl_path()
         eat(Token.Assign)
 
         captures: OrderedSet[int] = OrderedSet()
@@ -180,21 +213,18 @@ def parse_mlir(s: str, file: str) -> List[Statement]:
         captures.remove(0)
 
         eat(Token.SemiColon)
-        impl_metadata: Tuple[Path, int, int, ValueLiteral, List[str], List[int], bool] = (
-            impl_path, lambda_id, continuation_id, AnonymousLiteral(0), [], list(captures), False
-        )
-        impl: Implementation
+        impl_metadata: Tuple[ImplementationPath, List[int]] = (impl_path, list(captures))
+        impl: MImplementation
         match (a, b, c):
             case (a, None, None):
-                impl = ReturnImplementation(*impl_metadata, a)
+                impl = MReturnImplementation(*impl_metadata, a)
             case (a, b, None):
                 assert b is not None
-                impl = TailCallImplementation(*impl_metadata, a, b)
+                impl = MTailCallImplementation(*impl_metadata, a, b)
             case (a, b, c):
                 assert b is not None and c is not None
-                impl = ContinueCallImplementation(*impl_metadata, a, b, c)
+                impl = MContinueCallImplementation(*impl_metadata, a, b, c)
 
-        impl_table[(impl_path, lambda_id, continuation_id)] = impl
         return impl
 
     def parse_statement() -> Statement:

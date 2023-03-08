@@ -7,11 +7,14 @@ import sys
 
 def parse_args() -> Tuple[argparse.ArgumentParser, argparse.Namespace]:
     ap = argparse.ArgumentParser(
-        description = "generate main and initializer functions for lambda LLVM IR"
+        description = "compile lambda MLIR to main and initializer functions LLVM IR"
     )
 
-    ap.add_argument("crates", help = "the program crates, in initialization order, main crate last", nargs = "+")
+    ap.add_argument("input", help = "the input MLIR file", nargs = "?")
     ap.add_argument("-o", "--output", help = "the output LLIR file")
+    ap.add_argument("-P", "--crate-path", action = "append", help = "add a directory to the crate search path")
+    ap.add_argument("--no-default-crate-path", action = "store_true", default=False, help = "do not use default crate search paths")
+    ap.add_argument("-c", "--crate-name", help = "set the name of the compiled crate")
     ap.add_argument("-t", "--target", help = "set the architecture to compile for")
     ap.add_argument("-v", "--version", action = "store_true", help = "print current version and exit")
 
@@ -24,11 +27,23 @@ def main():
         print(f"{ap.prog} {lambda_compiler.__version__}")
         return
 
-    crates = args.crates
+    infile = args.input
+    if infile is None:
+        ap.print_help()
+        return
+
+    infile_dir = os.path.dirname(infile)
+    infile_name = os.path.basename(infile).split(".", 1)[0]
+
+    crate_path = get_crate_search_path(args.crate_path or [], not args.no_default_crate_path)
+
+    crate = args.crate_name
+    if crate is None:
+        crate = infile_name
 
     outfile = args.output
     if outfile is None:
-        outfile = crates[-1] + ".main.ll"
+        outfile = os.path.join(infile_dir, infile_name + ".main.ll")
 
     target = args.target
     if target is None:
@@ -41,6 +56,8 @@ def main():
 
     arch = TARGETS[target]
 
+    loader = CratePathLoader(crate_path)
+    mlir, crates = collect_mlir(crate, infile, loader)
     llir = generate_main_llir(crates, arch)
 
     with sys.stdout if outfile == "-" else open(outfile, "w") as f:
