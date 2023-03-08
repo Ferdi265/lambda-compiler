@@ -9,7 +9,7 @@ C_STD       := -std=c17
 C_WARN      := -Wall -Wextra
 C_SAN       :=
 C_LINK      := -Wl,--gc-sections
-C_FLAGS     := $(C_OPT) $(C_INC) $(C_STD) $(C_WARN) $(C_SAN)
+C_FLAGS     := $(C_OPT) $(C_SAN) $(C_INC) $(C_STD) $(C_WARN)
 
 MAIN_LL     := build/$(MAIN).main.ll
 LANG_SRC    := $(wildcard src/*.lambda)
@@ -29,12 +29,6 @@ clean:
 build:
 	mkdir -p $@
 
-build/%.ll.d: src/%.lambda | build
-	lambda-lang2deps -O build/ -P src/ -o $@ $^
-
-build/%.c.d: src/%.c | build
-	$(CLANG) -MM -MT build/$*.c.o -MP -MF $@ $^
-
 build/%.hlir: | $(LANG_DEPS)
 	lambda-lang2hlir -P build/ -o $@ $^
 
@@ -47,8 +41,14 @@ build/%.ll: | $(LANG_DEPS)
 build/%.main.ll: | $(LANG_DEPS)
 	lambda-mlir2main -P build/ -o $@ $^
 
+build/%.ll.d: src/%.lambda | build
+	lambda-lang2deps -O build/ -P src/ -o $@ $^
+
 build/%.ll.o: build/%.ll
 	$(CLANG) $(C_OPT) $(C_SAN) -c -o $@ $^
+
+build/%.c.d: src/%.c | build
+	$(CC) -MM -MT build/$*.c.o -MP -MF $@ $^
 
 build/%.c.o: src/%.c | $(C_DEPS)
 	$(CC) $(C_FLAGS) -c -o $@ $<
