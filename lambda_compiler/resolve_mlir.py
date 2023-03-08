@@ -1,11 +1,15 @@
 from .collect_mlir import *
+from .instantiate import *
 
 class ResolveMLIRError(Exception):
     pass
 
-def resolve_mlir(prog: List[Statement], deps: List[Statement]) -> List[Statement]:
+def resolve_mlir(prog: List[Statement], deps: Optional[List[Statement]] = None) -> List[Statement]:
     inst_table: Dict[InstancePath, Instance] = {}
     impl_table: Dict[ImplementationPath, Implementation] = {}
+
+    if deps is None:
+        deps = []
 
     def visit_deps_program(prog: List[Statement]):
         for stmt in prog:

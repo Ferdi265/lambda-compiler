@@ -2,16 +2,10 @@ from .parse_mlir import *
 from .loader import *
 from .orderedset import *
 
-def collect_mlir(crate: str, infile: str, loader: Loader) -> Tuple[List[Statement], List[str]]:
+def collect_mlir_deps(crate: str, prog: List[Statement], loader: Loader) -> Tuple[List[Statement], List[str]]:
     found_crates: OrderedSet[str] = OrderedSet()
     crate_order: List[str] = []
     collected: List[Statement] = []
-
-    def collect_file(crate: str, infile: str):
-        with open(infile) as f:
-            code = f.read()
-            prog = parse_mlir(code, infile)
-            collect_crate(crate, prog)
 
     def collect_crate(crate: str, prog: List[Statement]):
         for other in referenced_crates(prog):
@@ -31,5 +25,11 @@ def collect_mlir(crate: str, infile: str, loader: Loader) -> Tuple[List[Statemen
 
         return ref_crates
 
-    collect_file(crate, infile)
+    collect_crate(crate, prog)
     return collected, crate_order
+
+def collect_mlir(crate: str, infile: str, loader: Loader) -> Tuple[List[Statement], List[str]]:
+    with open(infile) as f:
+        code = f.read()
+        prog = parse_mlir(code, infile)
+        return collect_mlir_deps(crate, prog, loader)
