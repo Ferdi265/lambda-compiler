@@ -1,53 +1,61 @@
 CLANG       := clang
-TARGET      := lambda-crackme
-CRATES      := std io crackme
+MAIN        := crackme
+TARGET      := lambda-$(MAIN)
 
 CC          := $(CLANG)
 C_OPT       := -Oz -ffunction-sections -fdata-sections
-C_INCLUDES  :=
+C_INC       :=
 C_STD       := -std=c17
 C_WARN      := -Wall -Wextra
 C_SAN       :=
 C_LINK      := -Wl,--gc-sections
-C_FLAGS     := $(C_OPT) $(C_SAN) $(C_INCLUDES) $(C_STD) $(C_WARN)
+C_FLAGS     := $(C_OPT) $(C_INC) $(C_STD) $(C_WARN) $(C_SAN)
 
-MAIN_LL     := build/main.ll
+MAIN_LL     := build/$(MAIN).main.ll
 LANG_SRC    := $(wildcard src/*.lambda)
 C_SRC       := $(wildcard src/*.c)
 
+LANG_DEPS   := build/$(MAIN).ll.d
+C_DEPS      := $(C_SRC:src/%.c=build/%.c.d)
+DEPS        := $(LANG_DEPS) $(C_DEPS)
 OBJECTS     := $(MAIN_LL:build/%.ll=build/%.ll.o) $(LANG_SRC:src/%.lambda=build/%.ll.o) $(C_SRC:src/%.c=build/%.c.o)
 
 .PHONY: all clean
-all: build/$(TARGET) build/$(TARGET).stripped
+all: build/$(TARGET)
 
 clean:
 	rm -rf build
 
-build/%.hlir: src/%.lambda
-	@mkdir -p $$(dirname $@)
-	lambda-lang2hlir -P build/ -P src/ -o $@ $^
+build:
+	mkdir -p $@
 
-build/%.mlir: build/%.hlir
-	@mkdir -p $$(dirname $@)
+build/%.ll.d: src/%.lambda | build
+	lambda-lang2deps -O build/ -P src/ -o $@ $^
+
+build/%.c.d: src/%.c | build
+	$(CLANG) -MM -MT build/$*.c.o -MP -MF $@ $^
+
+build/%.hlir: | $(LANG_DEPS)
+	lambda-lang2hlir -P build/ -o $@ $^
+
+build/%.mlir: | $(LANG_DEPS)
 	lambda-hlir2mlir -o $@ $^
 
-build/%.ll: build/%.mlir
-	@mkdir -p $$(dirname $@)
+build/%.ll: | $(LANG_DEPS)
 	lambda-mlir2llir -o $@ $^
 
-$(MAIN_LL):
-	@mkdir -p $$(dirname $@)
-	lambda-llir2main $(CRATES) -o $@
+build/%.main.ll: | $(LANG_DEPS)
+	lambda-mlir2main -P build/ -o $@ $^
 
 build/%.ll.o: build/%.ll
 	$(CLANG) $(C_OPT) $(C_SAN) -c -o $@ $^
 
-build/%.c.o: src/%.c
-	@mkdir -p $$(dirname $@)
-	$(CC) $(C_FLAGS) -c -o $@ $^
+build/%.c.o: src/%.c | $(C_DEPS)
+	$(CC) $(C_FLAGS) -c -o $@ $<
 
 build/$(TARGET): $(OBJECTS)
 	$(CC) $(C_LINK) $(C_FLAGS) -o $@ $^
 
-build/$(TARGET).stripped: build/$(TARGET)
-	strip -s -o $@ $^
+$(DEPS):
+
+include $(DEPS)
