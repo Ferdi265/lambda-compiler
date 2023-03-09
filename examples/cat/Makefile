@@ -30,25 +30,25 @@ build:
 	mkdir -p $@
 
 build/%.hlir: | $(LANG_DEPS)
-	lambda-lang2hlir -P build/ -o $@ $^
+	lambda-lang2hlir -P build/ -o $@ $<
 
 build/%.mlir: | $(LANG_DEPS)
-	lambda-hlir2mlir -P build/ -o $@ $^
+	lambda-hlir2mlir -P build/ -o $@ $<
 
 build/%.ll: | $(LANG_DEPS)
-	lambda-mlir2llir -o $@ $^
+	lambda-mlir2llir -o $@ $<
 
 build/%.main.ll: | $(LANG_DEPS)
-	lambda-mlir2main -P build/ -o $@ $^
+	lambda-mlir2main -P build/ -o $@ $<
 
 build/%.ll.d: src/%.lambda | build
-	lambda-lang2deps -O build/ -P src/ -o $@ $^
+	lambda-lang2deps -O build/ -P src/ -o $@ $<
 
 build/%.ll.o: build/%.ll
-	$(CLANG) $(C_OPT) $(C_SAN) -c -o $@ $^
+	$(CLANG) $(C_OPT) $(C_SAN) -c -o $@ $<
 
 build/%.c.d: src/%.c | build
-	$(CC) -MM -MT build/$*.c.o -MP -MF $@ $^
+	$(CC) -MM -MT build/$*.c.o -MP -MF $@ $<
 
 build/%.c.o: src/%.c | $(C_DEPS)
 	$(CC) $(C_FLAGS) -c -o $@ $<
