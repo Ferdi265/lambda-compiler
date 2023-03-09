@@ -33,7 +33,7 @@ build/%.hlir: | $(LANG_DEPS)
 	lambda-lang2hlir -P build/ -o $@ $^
 
 build/%.mlir: | $(LANG_DEPS)
-	lambda-hlir2mlir -o $@ $^
+	lambda-hlir2mlir -P build/ -o $@ $^
 
 build/%.ll: | $(LANG_DEPS)
 	lambda-mlir2llir -o $@ $^
