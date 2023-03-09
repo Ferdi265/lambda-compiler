@@ -26,11 +26,11 @@ def pretty_make_deps(crate_order: List[ModuleNamespace], outfile: str, output_di
 
         hlir_src = os.path.join(output_dir, mod_name + ".hlir")
         hlir_crate_deps = list(map(get_hlir, mod_crate_deps))
-        print(f"{hlir_src}: {lambda_src} | {outfile} {' '.join(hlir_crate_deps + lambda_mods)}", end="\n\n", file=file)
+        print(f"{hlir_src}: {lambda_src} {' '.join(hlir_crate_deps + lambda_mods)} | {outfile}", end="\n\n", file=file)
 
         mlir_src = os.path.join(output_dir, mod_name + ".mlir")
         mlir_crate_deps = list(map(get_mlir, mod_crate_deps))
-        print(f"{mlir_src}: {hlir_src} | {outfile} {' '.join(mlir_crate_deps)}", end="\n\n", file=file)
+        print(f"{mlir_src}: {hlir_src} {' '.join(mlir_crate_deps)} | {outfile}", end="\n\n", file=file)
 
         llir_src = os.path.join(output_dir, mod_name + ".ll")
         print(f"{llir_src}: {mlir_src} | {outfile}", end="\n\n", file=file)
@@ -41,6 +41,6 @@ def pretty_make_deps(crate_order: List[ModuleNamespace], outfile: str, output_di
     llir_main_src = os.path.join(output_dir, crate_name + ".main.ll")
     mlir_main_src = os.path.join(output_dir, crate_name + ".mlir")
     llir_crate_deps = list(map(get_mlir, crate_order[1:]))
-    print(f"{llir_main_src}: {mlir_main_src} | {outfile} {' '.join(llir_crate_deps)}", end="\n\n", file=file)
+    print(f"{llir_main_src}: {mlir_main_src} {' '.join(llir_crate_deps)} | {outfile}", end="\n\n", file=file)
 
     print(f"{outfile}: | {' '.join(all_mod_deps)}", end="\n\n", file=file)
