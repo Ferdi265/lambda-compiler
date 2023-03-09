@@ -32,24 +32,24 @@ def pretty_make_deps(crate_order: List[ModuleNamespace], outfile: str, output_di
 
         hlir_src = get_hlir(mod)
         hlir_crate_deps = list(map(get_hlis, mod_crate_deps))
-        print(f"{hlir_src}: {lambda_src} {' '.join(hlir_crate_deps + lambda_mods)} | {outfile}", end="\n\n", file=file)
+        print(f"{hlir_src}: {lambda_src} {' '.join(hlir_crate_deps + lambda_mods)}", end="\n\n", file=file)
 
         hlis_src = get_hlis(mod)
-        print(f"{hlis_src}: {hlir_src} | {outfile}", end="\n\n", file=file)
+        print(f"{hlis_src}: {hlir_src}", end="\n\n", file=file)
 
         mlir_src = get_mlir(mod)
         mlir_crate_deps = list(map(get_mlir, mod_crate_deps))
-        print(f"{mlir_src}: {hlir_src} {' '.join(mlir_crate_deps)} | {outfile}", end="\n\n", file=file)
+        print(f"{mlir_src}: {hlir_src} {' '.join(mlir_crate_deps)}", end="\n\n", file=file)
 
         llir_src = get_llir(mod)
-        print(f"{llir_src}: {mlir_src} | {outfile}", end="\n\n", file=file)
+        print(f"{llir_src}: {mlir_src}", end="\n\n", file=file)
 
         all_mod_deps += list(map(get_lambda, mod_submod_deps))
 
     crate = crate_order[0]
     llir_main_src = get_llir(crate, main=True)
     llir_crate_deps = list(map(get_mlir, crate_order))
-    print(f"{llir_main_src}: {' '.join(llir_crate_deps)} | {outfile}", end="\n\n", file=file)
+    print(f"{llir_main_src}: {' '.join(llir_crate_deps)}", end="\n\n", file=file)
 
     print(f"{outfile}: {' '.join(all_mod_deps)}", end="\n\n", file=file)
 
