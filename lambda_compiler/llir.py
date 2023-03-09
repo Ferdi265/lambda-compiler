@@ -54,6 +54,7 @@ class ValueUses:
     capture_uses: DefaultDict[int, int] = field(default_factory = lambda: defaultdict(int))
     extern_uses: DefaultDict[str, int] = field(default_factory = lambda: defaultdict(int))
     inst_uses: DefaultDict[InstancePath, int] = field(default_factory = lambda: defaultdict(int))
+    impl_uses: DefaultDict[ImplementationPath, int] = field(default_factory = lambda: defaultdict(int))
     global_uses: DefaultDict[Path, int] = field(default_factory = lambda: defaultdict(int))
 
 
@@ -95,6 +96,7 @@ class ValueUses:
                 raise GenerateLLIRError(f"unexpected AST node encountered: {lit}")
 
     def count_impl_construction(self, impl: MImplementation):
+        self.impl_uses[impl.path] += 1
         for id in impl.captures:
             self.capture_uses[id] += 1
 
@@ -106,6 +108,8 @@ class GenerateLLIRContext:
     instance_type_cache: OrderedSet[int] = field(default_factory = OrderedSet)
     extern_cache: OrderedSet[str] = field(default_factory = OrderedSet)
     global_cache: OrderedSet[Path] = field(default_factory = OrderedSet)
+    inst_cache: OrderedSet[InstancePath] = field(default_factory = OrderedSet)
+    impl_cache: OrderedSet[ImplementationPath] = field(default_factory = OrderedSet)
     init_cache: List[MInstanceDefinition] = field(default_factory = list)
 
     def mangle_crate_init(self, crate: str) -> str:
@@ -139,6 +143,12 @@ class GenerateLLIRContext:
     def declare_global(self, path: Path):
         self.global_cache.add(path)
 
+    def declare_inst(self, inst: InstancePath):
+        self.inst_cache.add(inst)
+
+    def declare_impl(self, impl: ImplementationPath):
+        self.impl_cache.add(impl)
+
     def write_runtime(self):
         self.llir += lambda_runtime_llir.format(
             triple = self.arch.triple,
@@ -147,15 +157,25 @@ class GenerateLLIRContext:
             ptr_align = self.arch.ptr_align
         )
 
-    def write_global(self, path: Path):
-        if path not in self.global_cache:
-            self.llir += f"@{self.mangle_path(path)} = external global %lambda*, align {self.arch.ptr_align}\n"
-            self.global_cache.add(path)
-
     def write_extern(self, name: str):
         if name not in self.extern_cache:
-            self.llir += f"@{name} = external global %lambda*, align {self.arch.ptr_align}\n"
+            self.llir += f"@{name} = external dso_local global %lambda*, align {self.arch.ptr_align}\n"
             self.extern_cache.add(name)
+
+    def write_global(self, path: Path):
+        if path not in self.global_cache:
+            self.llir += f"@{self.mangle_path(path)} = external dso_local global %lambda*, align {self.arch.ptr_align}\n"
+            self.global_cache.add(path)
+
+    def write_inst(self, inst: InstancePath):
+        if inst not in self.inst_cache:
+            self.llir += f"@{self.mangle_inst(inst, alt=False)} = external dso_local global %lambda, align {self.arch.ptr_align}\n"
+            self.inst_cache.add(inst)
+
+    def write_impl(self, impl: ImplementationPath):
+        if impl not in self.impl_cache:
+            self.llir += f"declare external dso_local %lambda* @{self.mangle_impl(impl)}(%lambda*, %lambda*, %lambda_cont*) unnamed_addr\n"
+            self.impl_cache.add(impl)
 
     def write_instance_type(self, captures: int) -> InstanceType:
         inst_type = InstanceType(captures)
@@ -360,6 +380,10 @@ def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
             match stmt:
                 case MInstanceDefinition() as inst_def:
                     ctx.declare_global(inst_def.path)
+                case MInstance() as inst:
+                    ctx.declare_inst(inst.path)
+                case MImplementation() as impl:
+                    ctx.declare_impl(impl.path)
 
         for stmt in prog:
             match stmt:
@@ -395,6 +419,11 @@ def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
     def visit_instance(inst: MInstance, ctx: GenerateLLIRContext):
         inst_type = ctx.write_instance_type(len(inst.captures))
 
+        for capture in inst.captures:
+            ctx.write_inst(capture)
+
+        ctx.write_impl(inst.impl)
+
         ctx.llir += "@{inst_path_alt} = private dso_local unnamed_addr global {inst_type} {{ %lambda_header {{ i{ptr_bits} 1, i{ptr_bits} {captures}, i{ptr_bits} 0, %lambda_fn* @{impl_path} }}, [ {captures} x %lambda* ] [".format(
             ptr_bits = ctx.arch.ptr_size * 8,
             inst_type = inst_type,
@@ -403,11 +432,12 @@ def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
             captures = len(inst.captures),
         )
 
+
         ctx.llir += ",".join(f" %lambda* @{ctx.mangle_inst(capture, alt=False)}" for capture in inst.captures)
 
         ctx.llir += f" ] }}, align {ctx.arch.ptr_align}\n"
 
-        ctx.llir += "@{inst_path} = internal dso_local alias %lambda, %lambda* bitcast({inst_type}* @{inst_path_alt} to %lambda*)\n".format(
+        ctx.llir += "@{inst_path} = external dso_local alias %lambda, %lambda* bitcast({inst_type}* @{inst_path_alt} to %lambda*)\n".format(
             inst_type = inst_type,
             inst_path = ctx.mangle_inst(inst.path, alt = False),
             inst_path_alt = ctx.mangle_inst(inst.path, alt = True),
@@ -422,7 +452,13 @@ def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
         for path in uses.global_uses.keys():
             ctx.write_global(path)
 
-        ctx.llir += "define internal dso_local %lambda* @{impl_path}(%lambda* %0, %lambda* %1, %lambda_cont* %2) unnamed_addr {{\n".format(
+        for inst_path in uses.inst_uses.keys():
+            ctx.write_inst(inst_path)
+
+        for impl_path in uses.impl_uses.keys():
+            ctx.write_impl(impl_path)
+
+        ctx.llir += "define external dso_local %lambda* @{impl_path}(%lambda* %0, %lambda* %1, %lambda_cont* %2) unnamed_addr {{\n".format(
             impl_path = ctx.mangle_impl(impl.path)
         )
 
