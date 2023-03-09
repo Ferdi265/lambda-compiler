@@ -36,12 +36,15 @@ build/%.hlis: build/%.hlir
 	lambda-hlir2hlis -o $@ $<
 
 build/%.mlir: build/%.hlir
-	lambda-hlir2mlir -P build/ -o $@ $<
+	lambda-hlir2mlir -o $@ $<
 
-build/%.ll: build/%.mlir
+build/%.opt.mlir: build/%.mlir
+	lambda-mlir2opt -P build/ -o $@ $<
+
+build/%.ll: build/%.opt.mlir
 	lambda-mlir2llir -o $@ $<
 
-build/%.main.ll: build/%.mlir
+build/%.main.ll: build/%.opt.mlir
 	lambda-mlir2main -P build/ -o $@ $<
 
 build/%.ll.d: src/%.lambda | build
