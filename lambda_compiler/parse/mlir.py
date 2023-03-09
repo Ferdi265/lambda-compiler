@@ -1,4 +1,5 @@
-from .lang import *
+from .parser import *
+from .lang import NumberParser
 from ..ast.mlir import *
 
 def parse_mlir(code: str, file: str) -> List[Statement]:
@@ -91,7 +92,7 @@ def parse_mlir(code: str, file: str) -> List[Statement]:
         if p.token != Token.PathSep:
             return ExternLiteral(name)
 
-        path = parse_path(name)
+        path = p.parse_absolute_path(name)
         if p.token == Token.InstSep:
             inst = parse_inst_path(path)
             return InstanceLiteral(inst)

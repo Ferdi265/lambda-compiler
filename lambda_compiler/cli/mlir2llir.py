@@ -1,5 +1,8 @@
-from lambda_compiler.legacy import *
-import lambda_compiler
+from typing import *
+from lambda_compiler.version import __version__
+from lambda_compiler.parse.mlir import parse_mlir
+from lambda_compiler.passes.llir.target import TARGETS
+from lambda_compiler.passes.llir.generate import generate_llir
 import argparse
 import platform
 import os.path
@@ -22,7 +25,7 @@ def main():
     ap, args = parse_args()
 
     if args.version:
-        print(f"{ap.prog} {lambda_compiler.__version__}")
+        print(f"{ap.prog} {__version__}")
         return
 
     infile = args.input
