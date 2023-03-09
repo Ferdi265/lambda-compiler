@@ -137,7 +137,7 @@ def instantiate_implementations(prog: List[Statement], deps: List[Statement]) ->
         for stmt in prog:
             visit_statement_instantiate(stmt, ctx)
 
-        prog = tree_shake_dedup_context(ctx.dedup, deps)
+        prog = collect_dedup_context(ctx.dedup)
         return dedup_implementations(prog, deps)
 
     def visit_statement_find_impls(stmt: Statement, ctx: InstantiateContext):

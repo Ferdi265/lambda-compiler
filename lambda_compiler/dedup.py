@@ -192,7 +192,7 @@ def build_dedup_context(prog: List[Statement]) -> DedupImplementationsContext:
     ctx.deduplicate(prog)
     return ctx
 
-def collect_dedup_context(ctx: DedupImplementationsContext, tree_shake: bool = False) -> List[Statement]:
+def collect_dedup_context(ctx: DedupImplementationsContext) -> List[Statement]:
     return (
         cast(List[Statement], ctx.extern_crates) +
         cast(List[Statement], ctx.definitions) +
