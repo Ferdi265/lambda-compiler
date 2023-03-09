@@ -43,7 +43,7 @@ def pretty_make_deps(crate_order: List[ModuleNamespace], outfile: str, output_di
     llir_crate_deps = list(map(get_mlir, crate_order[1:]))
     print(f"{llir_main_src}: {mlir_main_src} {' '.join(llir_crate_deps)} | {outfile}", end="\n\n", file=file)
 
-    print(f"{outfile}: | {' '.join(all_mod_deps)}", end="\n\n", file=file)
+    print(f"{outfile}: {' '.join(all_mod_deps)}", end="\n\n", file=file)
 
     for dep in all_mod_deps:
         print(f"{dep}:", end="\n\n", file=file)
