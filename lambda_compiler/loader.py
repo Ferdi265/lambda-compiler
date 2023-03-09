@@ -82,6 +82,10 @@ class CratePathLoader(Loader):
 
     def load_crate_mlir(self, crate: str) -> List[Statement]:
         for dir in self.crate_path:
+            crate_src = os.path.join(dir, f"{crate}.opt.mlir")
+            if os.path.isfile(crate_src):
+                break
+
             crate_src = os.path.join(dir, f"{crate}.mlir")
             if os.path.isfile(crate_src):
                 break

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import *
 from dataclasses import dataclass, field
+from collections import defaultdict
 
 from .dedup import *
 
@@ -19,7 +20,7 @@ class InstantiateContext:
     def_table: Dict[Path, InstanceDefinition] = field(default_factory = dict)
 
     impl_inst_table: Dict[Tuple[Path, int, int], Instance] = field(default_factory = dict)
-    inst_id_table: Dict[Path, int] = field(default_factory = dict)
+    inst_id_table: Dict[Path, int] = field(default_factory = lambda: defaultdict(int))
 
     instances: List[Instance] = field(default_factory = list)
     definitions: List[InstanceDefinition] = field(default_factory = list)
@@ -45,12 +46,13 @@ class InstantiateContext:
         return self.def_table[path].inst
 
     def next_inst_id(self, path: Path) -> int:
-        if path not in self.inst_id_table:
-            self.inst_id_table[path] = 0
-
         id = self.inst_id_table[path]
         self.inst_id_table[path] += 1
         return id
+
+    def bump_inst_id(self, path: Path, taken_id: int):
+        if self.inst_id_table[path] <= taken_id:
+            self.inst_id_table[path] = taken_id + 1
 
     def instantiate(self, path: Path, impl: Implementation, captures: List[Instance]) -> Instance:
         captures = [captures[i] for i in impl.anonymous_captures]
@@ -65,24 +67,18 @@ class InstantiateContext:
 
         return dedup_inst
 
-    def evaluate_definition(self, impl: Implementation):
-        assert len(impl.anonymous_captures) == 0
+    def evaluate_definition(self, inst_def: InstanceDefinition):
+        if not inst_def.needs_init:
+            return
 
         try:
-            inst = self.evaluate_stack(impl)
-            needs_init = False
+            inst = self.evaluate_stack(inst_def.path, inst_def.inst.impl)
+            inst_def.inst = inst
+            inst_def.needs_init = False
         except InstantiateNotYetSeenError:
-            inst = self.resolve_impl_inst(impl)
-            needs_init = True
+            pass
 
-        inst_def = InstanceDefinition(impl.path, inst, needs_init, impl.is_public)
-        self.definitions.append(inst_def)
-        self.def_table[impl.path] = inst_def
-        self.dedup.insert_inst_def(inst_def)
-
-    def evaluate_stack(self, impl: Implementation) -> Instance:
-        path = impl.path
-
+    def evaluate_stack(self, path: Path, impl: Implementation) -> Instance:
         stack: List[Instance] = []
         fn, arg = self.evaluate_impl(path, impl, [], stack)
         while fn is not None or len(stack) > 0:
@@ -126,7 +122,9 @@ class InstantiateContext:
             case _:
                 raise InstantiateError(f"unexpected AST node encountered: {lit}")
 
-def instantiate_implementations(prog: List[Statement], deps: List[Statement]) -> List[Statement]:
+def instantiate_implementations(prog: List[Statement], opt_deps: Optional[List[Statement]] = None) -> List[Statement]:
+    deps = opt_deps or []
+
     def visit_program(prog: List[Statement]) -> List[Statement]:
         dedup = build_dedup_context(deps + prog)
         ctx = InstantiateContext(dedup)
@@ -142,10 +140,12 @@ def instantiate_implementations(prog: List[Statement], deps: List[Statement]) ->
 
     def visit_statement_find_impls(stmt: Statement, ctx: InstantiateContext):
         match stmt:
-            case ExternCrate() | Instance():
+            case ExternCrate():
                 pass
-            case InstanceDefinition() as inst:
-                ctx.def_table[inst.path] = inst
+            case InstanceDefinition() as inst_def:
+                ctx.def_table[inst_def.path] = inst_def
+            case Instance() as inst:
+                ctx.bump_inst_id(inst.path, inst.inst_id)
             case Implementation() as impl:
                 visit_implementation_find_impls(impl, ctx)
             case _:
@@ -156,12 +156,18 @@ def instantiate_implementations(prog: List[Statement], deps: List[Statement]) ->
 
     def visit_statement_instantiate(stmt: Statement, ctx: InstantiateContext):
         match stmt:
-            case ExternCrate():
+            case ExternCrate() | Instance():
                 pass
+            case InstanceDefinition() as inst_def:
+                visit_definition_instantiate(inst_def, ctx)
             case Implementation() as impl:
                 visit_implementation_instantiate(impl, ctx)
             case _:
                 raise InstantiateError(f"unexpected AST node encountered: {stmt}")
+
+    def visit_definition_instantiate(inst_def: InstanceDefinition, ctx: InstantiateContext):
+        ctx.def_table[inst_def.path] = inst_def
+        ctx.evaluate_definition(inst_def)
 
     def visit_implementation_instantiate(impl: Implementation, ctx: InstantiateContext):
         match impl:
@@ -179,9 +185,6 @@ def instantiate_implementations(prog: List[Statement], deps: List[Statement]) ->
 
         if len(impl.anonymous_captures) == 0:
             ctx.instantiate(impl.path, impl, [])
-
-        if impl.lambda_id == 0 and impl.continuation_id == 0:
-            ctx.evaluate_definition(impl)
 
     def visit_literal(lit: ValueLiteral, ctx: InstantiateContext) -> ValueLiteral:
         match lit:

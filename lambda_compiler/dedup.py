@@ -2,22 +2,8 @@ from __future__ import annotations
 from typing import *
 from collections import defaultdict
 
-from .renumber import *
+from .definitions import *
 from .parse_mlir import *
-
-@dataclass
-class Instance(Statement):
-    path: Path
-    inst_id: int
-    impl: Implementation
-    captures: List[Instance]
-
-@dataclass
-class InstanceDefinition(Statement):
-    path: Path
-    inst: Instance
-    needs_init: bool
-    is_public: bool
 
 @dataclass
 class InstanceLiteral(ValueLiteral):
@@ -163,6 +149,8 @@ class DedupImplementationsContext:
                         hash_value = self.hash_inst(inst)
                     case InstanceDefinition() as inst_def:
                         hash_value = self.hash_inst_def(inst_def)
+                    case _:
+                        raise DedupImplementationsError(f"unexpected AST node encountered: {stmt}")
 
                 if hash_value is None:
                     continue
@@ -178,6 +166,8 @@ class DedupImplementationsContext:
                         self.insert_inst(inst, hash_value)
                     case InstanceDefinition() as inst_def:
                         self.insert_inst_def(inst_def)
+                    case _:
+                        raise DedupImplementationsError(f"unexpected AST node encountered: {stmt}")
 
     def dedup_new_inst(self, inst: Instance) -> Instance:
         hash_value = self.hash_inst(inst)

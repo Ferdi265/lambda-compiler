@@ -15,8 +15,11 @@ def pretty_make_deps(crate_order: List[ModuleNamespace], outfile: str, output_di
     def get_hlis(mod: ModuleNamespace) -> str:
         return os.path.join(output_dir, mod.get_name() + ".hlis")
 
-    def get_mlir(mod: ModuleNamespace) -> str:
-        return os.path.join(output_dir, mod.get_name() + ".mlir")
+    def get_mlir(mod: ModuleNamespace, opt: bool = False) -> str:
+        return os.path.join(output_dir, mod.get_name() + (".opt" if opt else "") + ".mlir")
+
+    def get_opt_mlir(mod: ModuleNamespace, opt: bool = False) -> str:
+        return get_mlir(mod, opt=True)
 
     def get_llir(mod: ModuleNamespace, main: bool = False) -> str:
         return os.path.join(output_dir, mod.get_name() + (".main" if main else "") + ".ll")
@@ -38,17 +41,20 @@ def pretty_make_deps(crate_order: List[ModuleNamespace], outfile: str, output_di
         print(f"{hlis_src}: {hlir_src}", end="\n\n", file=file)
 
         mlir_src = get_mlir(mod)
-        mlir_crate_deps = list(map(get_mlir, mod_crate_deps))
-        print(f"{mlir_src}: {hlir_src} {' '.join(mlir_crate_deps)}", end="\n\n", file=file)
+        print(f"{mlir_src}: {hlir_src}", end="\n\n", file=file)
+
+        mlir_opt_src = get_opt_mlir(mod)
+        mlir_opt_crate_deps = list(map(get_opt_mlir, mod_crate_deps))
+        print(f"{mlir_opt_src}: {mlir_src} {' '.join(mlir_opt_crate_deps)}", end="\n\n", file=file)
 
         llir_src = get_llir(mod)
-        print(f"{llir_src}: {mlir_src}", end="\n\n", file=file)
+        print(f"{llir_src}: {mlir_opt_src}", end="\n\n", file=file)
 
         all_mod_deps += list(map(get_lambda, mod_submod_deps))
 
     crate = crate_order[0]
     llir_main_src = get_llir(crate, main=True)
-    llir_crate_deps = list(map(get_mlir, crate_order))
+    llir_crate_deps = list(map(get_opt_mlir, crate_order))
     print(f"{llir_main_src}: {' '.join(llir_crate_deps)}", end="\n\n", file=file)
 
     print(f"{outfile}: {' '.join(all_mod_deps)}", end="\n\n", file=file)
