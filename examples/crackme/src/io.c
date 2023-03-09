@@ -1,9 +1,64 @@
 #include <stdio.h>
 #include "lambda.h"
 
-extern lambda* _L3Nstd4Ntrue;
-extern lambda* _L3Nstd5Nfalse;
-extern lambda* _L3Nstd5Nerror;
+static lambda* lambda_io_true_2_0_impl(lambda* arg, lambda* self, lambda_cont* cont) {
+    lambda_ref(self->captures[0], 1);
+    lambda_unref(arg);
+    lambda* value = self->captures[0];
+    lambda_unref(self);
+    return lambda_cont_call(value, cont);
+}
+
+static lambda* lambda_io_true_1_0_impl(lambda* arg, lambda* self, lambda_cont* cont) {
+    lambda* value = lambda_alloc(1, 0);
+    value->header.impl = lambda_io_true_2_0_impl;
+    value->captures[0] = arg;
+    lambda_unref(self);
+    return lambda_cont_call(value, cont);
+}
+
+LAMBDA_INSTANCE(lambda_io_true_0_inst, lambda_io_true_1_0_impl, 0, 0,
+    .captures = {},
+    .userdata = {}
+);
+
+lambda* lambda_io_true = (lambda*)&lambda_io_true_0_inst;
+
+static lambda* lambda_io_false_2_0_impl(lambda* arg, lambda* self, lambda_cont* cont) {
+    lambda_unref(self);
+    return lambda_cont_call(arg, cont);
+}
+
+LAMBDA_INSTANCE(lambda_io_false_0_inst, lambda_io_false_2_0_impl, 0, 0,
+    .captures = {},
+    .userdata = {}
+);
+
+static lambda* lambda_io_false_1_0_impl(lambda* arg, lambda* self, lambda_cont* cont) {
+    lambda_ref((lambda*)&lambda_io_false_0_inst, 1);
+    lambda_unref(arg);
+    lambda_unref(self);
+    return lambda_cont_call((lambda*)&lambda_io_false_0_inst, cont);
+}
+
+LAMBDA_INSTANCE(lambda_io_false_1_inst, lambda_io_false_1_0_impl, 0, 0,
+    .captures = {},
+    .userdata = {}
+);
+
+lambda* lambda_io_false = (lambda*)&lambda_io_false_1_inst;
+
+static lambda* lambda_io_error_impl(lambda* arg, lambda* self, lambda_cont* cont) {
+    lambda_unref(arg);
+    return lambda_cont_call(self, cont);
+}
+
+LAMBDA_INSTANCE(lambda_io_error_inst, lambda_io_error_impl, 0, 0,
+    .captures = {},
+    .userdata = {}
+);
+
+lambda* lambda_io_error = (lambda*)&lambda_io_error_inst;
 
 static lambda* num_impl(lambda* arg, lambda* self, lambda_cont* cont) {
     lambda_unref(arg);
@@ -29,8 +84,8 @@ static size_t get_num(lambda* l) {
 static lambda* lambda_io_zero_impl(lambda* arg, lambda* self, lambda_cont* cont) {
     lambda_unref(arg);
     lambda_unref(self);
-    lambda_ref(_L3Nstd5Nerror, 1);
-    return lambda_cont_call(_L3Nstd5Nerror, cont);
+    lambda_ref(lambda_io_error, 1);
+    return lambda_cont_call(lambda_io_error, cont);
 }
 
 LAMBDA_INSTANCE(lambda_io_zero_inst, lambda_io_zero_impl, 0, 8,
@@ -82,9 +137,9 @@ static lambda* lambda_io_iszero_impl(lambda* arg, lambda* self, lambda_cont* con
 
     lambda* r;
     if (num == 0) {
-        r = _L3Nstd4Ntrue;
+        r = lambda_io_true;
     } else {
-        r = _L3Nstd5Nfalse;
+        r = lambda_io_false;
     }
 
     lambda_ref(r, 1);
@@ -106,8 +161,8 @@ static lambda* lambda_io_putc_impl(lambda* arg, lambda* self, lambda_cont* cont)
     lambda_unref(arg);
     lambda_unref(self);
 
-    lambda_ref(_L3Nstd5Nerror, 1);
-    return lambda_cont_call(_L3Nstd5Nerror, cont);
+    lambda_ref(lambda_io_error, 1);
+    return lambda_cont_call(lambda_io_error, cont);
 }
 
 LAMBDA_INSTANCE(lambda_io_putc_inst, lambda_io_putc_impl, 0, 0,
