@@ -401,6 +401,8 @@ def generate_llir(prog: List[Statement], crate: str, arch: Architecture) -> str:
         return ctx.llir
 
     def visit_definition(inst_def: MInstanceDefinition, ctx: GenerateLLIRContext):
+        ctx.write_inst(inst_def.inst)
+
         ctx.llir += f"@{ctx.mangle_def(inst_def)} = "
 
         if not inst_def.is_public:

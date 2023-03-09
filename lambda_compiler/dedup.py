@@ -3,6 +3,7 @@ from typing import *
 from collections import defaultdict
 
 from .renumber import *
+from .parse_mlir import *
 
 @dataclass
 class Instance(Statement):
@@ -35,33 +36,33 @@ class DedupImplementationsContext:
     instances: List[Instance] = field(default_factory = list)
     definitions: List[InstanceDefinition] = field(default_factory = list)
 
-    inst_hash: Dict[Tuple[Path, int], tuple] = field(default_factory = dict)
-    impl_hash: Dict[Tuple[Path, int, int], tuple] = field(default_factory = dict)
+    inst_hash: Dict[InstancePath, tuple] = field(default_factory = dict)
+    impl_hash: Dict[ImplementationPath, tuple] = field(default_factory = dict)
     inst_dedup: Dict[tuple, Instance] = field(default_factory = dict)
     impl_dedup: Dict[tuple, Implementation] = field(default_factory = dict)
 
-    def inst_hash_key(self, inst: Instance) -> Tuple[Path, int]:
-        return (inst.path, inst.inst_id)
+    def inst_path(self, inst: Instance) -> InstancePath:
+        return InstancePath(inst.path, inst.inst_id)
 
-    def impl_hash_key(self, impl: Implementation) -> Tuple[Path, int, int]:
-        return (impl.path, impl.lambda_id, impl.continuation_id)
+    def impl_path(self, impl: Implementation) -> ImplementationPath:
+        return ImplementationPath(impl.path, impl.lambda_id, impl.continuation_id)
 
     def dedup_inst(self, inst: Instance) -> Tuple[Instance, tuple]:
-        inst_hash_key = self.inst_hash_key(inst)
-        if inst_hash_key not in self.inst_hash:
+        inst_path = self.inst_path(inst)
+        if inst_path not in self.inst_hash:
             raise DedupNotYetSeenError()
 
-        hash_value = self.inst_hash[inst_hash_key]
+        hash_value = self.inst_hash[inst_path]
         inst = self.inst_dedup[hash_value]
 
         return inst, hash_value
 
     def dedup_impl(self, impl: Implementation) -> Tuple[Implementation, tuple]:
-        impl_hash_key = self.impl_hash_key(impl)
-        if impl_hash_key not in self.impl_hash:
+        impl_path = self.impl_path(impl)
+        if impl_path not in self.impl_hash:
             raise DedupNotYetSeenError()
 
-        hash_value = self.impl_hash[impl_hash_key]
+        hash_value = self.impl_hash[impl_path]
         impl = self.impl_dedup[hash_value]
 
         return impl, hash_value
@@ -130,13 +131,13 @@ class DedupImplementationsContext:
         return ("crate", crate.name)
 
     def insert_impl(self, impl: Implementation, hash_value: tuple):
-        self.impl_hash[self.impl_hash_key(impl)] = hash_value
+        self.impl_hash[self.impl_path(impl)] = hash_value
         if hash_value not in self.impl_dedup:
             self.impl_dedup[hash_value] = impl
             self.implementations.append(impl)
 
     def insert_inst(self, inst: Instance, hash_value: tuple):
-        self.inst_hash[self.inst_hash_key(inst)] = hash_value
+        self.inst_hash[self.inst_path(inst)] = hash_value
         if hash_value not in self.inst_dedup:
             self.inst_dedup[hash_value] = inst
             self.instances.append(inst)
