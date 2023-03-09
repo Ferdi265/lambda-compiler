@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from collections import defaultdict
 from typing import *
 
-from ...orderedset import *
+from ...ordered_set import *
 from ...ast.mlir import *
 from .runtime import *
 from .target import *

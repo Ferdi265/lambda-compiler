@@ -1,6 +1,6 @@
 from .parse_mlir import *
 from .loader import *
-from .orderedset import *
+from ..ordered_set import *
 
 def collect_mlir_deps(crate: str, prog: List[Statement], loader: Loader, collect_first: bool = True) -> Tuple[List[Statement], List[str]]:
     found_crates: OrderedSet[str] = OrderedSet()
