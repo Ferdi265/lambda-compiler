@@ -29,19 +29,19 @@ clean:
 build:
 	mkdir -p $@
 
-build/%.hlir: | $(LANG_DEPS)
+build/%.hlir:
 	lambda-lang2hlir -P build/ -o $@ $<
 
-build/%.hlis: | $(LANG_DEPS)
+build/%.hlis: build/%.hlir
 	lambda-hlir2hlis -o $@ $<
 
-build/%.mlir: | $(LANG_DEPS)
+build/%.mlir: build/%.hlir
 	lambda-hlir2mlir -P build/ -o $@ $<
 
-build/%.ll: | $(LANG_DEPS)
+build/%.ll: build/%.mlir
 	lambda-mlir2llir -o $@ $<
 
-build/%.main.ll: | $(LANG_DEPS)
+build/%.main.ll: build/%.mlir
 	lambda-mlir2main -P build/ -o $@ $<
 
 build/%.ll.d: src/%.lambda | build
@@ -53,7 +53,7 @@ build/%.ll.o: build/%.ll
 build/%.c.d: src/%.c | build
 	$(CC) -MM -MT build/$*.c.o -MP -MF $@ $<
 
-build/%.c.o: src/%.c | $(C_DEPS)
+build/%.c.o: src/%.c
 	$(CC) $(C_FLAGS) -c -o $@ $<
 
 build/$(TARGET): $(OBJECTS)
