@@ -1,4 +1,4 @@
-from lambda_compiler import *
+from lambda_compiler.legacy import *
 import lambda_compiler
 import argparse
 import platform
