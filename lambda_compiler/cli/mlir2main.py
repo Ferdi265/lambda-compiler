@@ -1,4 +1,6 @@
 from lambda_compiler.legacy import *
+from lambda_compiler.passes.llir.generate import *
+from lambda_compiler.passes.llir.target import *
 import lambda_compiler
 import argparse
 import platform
