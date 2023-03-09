@@ -21,4 +21,3 @@ from .parse_mlir import *
 from .collect_mlir import *
 from .resolve_mlir import *
 from .pretty import *
-from .search_path import *

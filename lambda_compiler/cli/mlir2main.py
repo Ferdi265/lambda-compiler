@@ -1,7 +1,9 @@
-from lambda_compiler.legacy import *
-from lambda_compiler.passes.llir.generate import *
-from lambda_compiler.passes.llir.target import *
-import lambda_compiler
+from typing import *
+from lambda_compiler.version import __version__
+from lambda_compiler.search_path import get_crate_search_path
+from lambda_compiler.passes.mlir.collect_deps import load_crate, collect_deps
+from lambda_compiler.passes.llir.generate import generate_main_llir
+from lambda_compiler.passes.llir.target import TARGETS
 import argparse
 import platform
 import os.path
@@ -26,7 +28,7 @@ def main():
     ap, args = parse_args()
 
     if args.version:
-        print(f"{ap.prog} {lambda_compiler.__version__}")
+        print(f"{ap.prog} {__version__}")
         return
 
     infile = args.input
@@ -58,8 +60,8 @@ def main():
 
     arch = TARGETS[target]
 
-    loader = CratePathLoader(crate_path)
-    mlir, crates = collect_mlir(crate, infile, loader)
+    ast = load_crate(crate, crate_path)
+    deps_ast, crates = collect_deps(crate, ast, crate_path)
     llir = generate_main_llir(crates, arch)
 
     with sys.stdout if outfile == "-" else open(outfile, "w") as f:

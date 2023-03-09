@@ -1,4 +1,5 @@
 from lambda_compiler.legacy import *
+from lambda_compiler.search_path import *
 import lambda_compiler
 import argparse
 import os.path
