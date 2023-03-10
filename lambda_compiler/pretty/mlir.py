@@ -34,7 +34,7 @@ def pretty_mlir(prog: List[Statement], file: TextIO = sys.stdout):
         inst = defi.inst
         is_public_str = "pub " if defi.is_public else ""
         init_tag = " $$" if defi.needs_init else ""
-        print(f"{is_public_str}{defi.path} = {inst.path}{init_tag};", file=file)
+        print(f"{is_public_str}{defi.path} = {inst}{init_tag};", file=file)
 
     def visit_instance(inst: Instance):
         impl = inst.impl

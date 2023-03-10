@@ -3,7 +3,6 @@ from .resolve import *
 from .rechain import *
 from .continuations import *
 from .flattenimpls import *
-from .instantiate import *
 import sys
 
 class PrettyError(Exception):

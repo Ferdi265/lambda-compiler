@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .renumber import *
+from .reorder import *
 
 @dataclass
 class Instance(Statement):

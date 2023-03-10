@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import *
 from dataclasses import dataclass, field
 from .collect import *
-from .parse_mlir import *
 import os.path
 
 class LoaderError(Exception):
@@ -79,22 +78,6 @@ class CratePathLoader(Loader):
         mod = root.crates[crate]
         mod.strip_private()
         return mod
-
-    def load_crate_mlir(self, crate: str) -> List[Statement]:
-        for dir in self.crate_path:
-            crate_src = os.path.join(dir, f"{crate}.opt.mlir")
-            if os.path.isfile(crate_src):
-                break
-
-            crate_src = os.path.join(dir, f"{crate}.mlir")
-            if os.path.isfile(crate_src):
-                break
-        else:
-            raise LoaderError(f"did not find crate '{crate}'")
-
-        with open(crate_src) as f:
-            code = f.read()
-            return parse_mlir(code, crate_src)
 
     def load_mod(self, mod: ModuleNamespace, name: str) -> ModuleNamespace:
         found = False

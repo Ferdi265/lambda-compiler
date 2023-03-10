@@ -1,6 +1,11 @@
-from lambda_compiler.legacy import *
-from lambda_compiler.search_path import *
-import lambda_compiler
+from typing import *
+from lambda_compiler.version import __version__
+from lambda_compiler.search_path import get_crate_search_path
+from lambda_compiler.parse.mlir import parse_mlir
+from lambda_compiler.passes.mlir.collect_deps import load_crate, collect_deps
+from lambda_compiler.passes.mlir.link import link_mlir, unlink_mlir
+from lambda_compiler.passes.mlir.optimize import optimize_mlir
+from lambda_compiler.pretty.mlir import pretty_mlir
 import argparse
 import os.path
 import sys
@@ -48,11 +53,11 @@ def main():
         code = f.read()
 
     ast = parse_mlir(code, infile)
-    loader = CratePathLoader(crate_path)
-    deps_ast, crates = collect_mlir_deps(crate, ast, loader, collect_first=False)
-    deps_ast = resolve_mlir(deps_ast)
-    ast = resolve_mlir(ast, deps_ast)
-    ast = instantiate_implementations(ast, deps_ast)
+    deps_ast, crates = collect_deps(crate, ast, crate_path)
+    deps_ast = link_mlir(deps_ast)
+    ast = link_mlir(ast, deps_ast)
+    ast = optimize_mlir(ast, deps_ast)
+    ast = unlink_mlir(ast)
 
     with sys.stdout if outfile == "-" else open(outfile, "w") as f:
         pretty_mlir(ast, file=f)

@@ -1,7 +1,8 @@
 from typing import *
 from lambda_compiler.version import __version__
 from lambda_compiler.search_path import get_crate_search_path
-from lambda_compiler.passes.mlir.collect_deps import load_crate, collect_deps
+from lambda_compiler.parse.mlir import parse_mlir
+from lambda_compiler.passes.mlir.collect_deps import collect_deps
 from lambda_compiler.passes.llir.generate import generate_main_llir
 from lambda_compiler.passes.llir.target import TARGETS
 import argparse
@@ -60,7 +61,10 @@ def main():
 
     arch = TARGETS[target]
 
-    ast = load_crate(crate, crate_path)
+    with open(infile, "r") as f:
+        code = f.read()
+
+    ast = parse_mlir(code, infile)
     deps_ast, crates = collect_deps(crate, ast, crate_path)
     llir = generate_main_llir(crates, arch)
 

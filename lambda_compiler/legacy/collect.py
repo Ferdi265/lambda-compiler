@@ -63,10 +63,6 @@ class Loader(ABC):
         ...
 
     @abstractmethod
-    def load_crate_mlir(self, crate: str) -> List[Statement]:
-        ...
-
-    @abstractmethod
     def load_mod(self, mod: ModuleNamespace, name: str) -> ModuleNamespace:
         ...
 

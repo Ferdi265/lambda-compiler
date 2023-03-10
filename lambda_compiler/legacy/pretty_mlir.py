@@ -1,4 +1,4 @@
-from .dedup import *
+from .definitions import *
 from .parse_mlir import *
 import sys
 

@@ -43,6 +43,7 @@ def main():
     ast = compute_continuations(ast)
     ast = flatten_implementations(ast)
     ast = renumber_captures(ast)
+    ast = reorder_implementations(ast)
     ast = add_definitions(ast)
 
     with sys.stdout if outfile == "-" else open(outfile, "w") as f:
