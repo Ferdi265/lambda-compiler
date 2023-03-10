@@ -2,7 +2,6 @@ from typing import *
 from .parser import Token
 from .lang import NumberParser
 from ..ast.mlir import *
-from ..ordered_set import OrderedSet
 
 def parse_mlir(code: str, file: str) -> List[Statement]:
     p = NumberParser(code, file)
@@ -74,7 +73,7 @@ def parse_mlir(code: str, file: str) -> List[Statement]:
         p.eat(Token.SemiColon)
         return Instance(inst, impl, captures)
 
-    def parse_capture(captures: OrderedSet[int]) -> int | InstancePath:
+    def parse_capture(captures: Set[int]) -> int | InstancePath:
         if p.token == Token.CapturePrefix:
             p.eat()
             id = p.parse_number()
@@ -83,7 +82,7 @@ def parse_mlir(code: str, file: str) -> List[Statement]:
         else:
             return parse_inst_path()
 
-    def parse_value_lit(captures: OrderedSet[int]) -> ValueLiteral:
+    def parse_value_lit(captures: Set[int]) -> ValueLiteral:
         if p.token == Token.CapturePrefix:
             p.eat()
             id = p.parse_number()
@@ -116,7 +115,7 @@ def parse_mlir(code: str, file: str) -> List[Statement]:
         impl_path = parse_impl_path()
         p.eat(Token.Assign)
 
-        captures: OrderedSet[int] = OrderedSet()
+        captures: Set[int] = set()
 
         a, b, c = parse_value_lit(captures), None, None
         if p.token != Token.SemiColon:
@@ -125,7 +124,8 @@ def parse_mlir(code: str, file: str) -> List[Statement]:
             p.eat(Token.Arrow)
             c = parse_value_lit(captures)
 
-        captures.remove(0)
+        if 0 in captures:
+            captures.remove(0)
 
         p.eat(Token.SemiColon)
         impl_metadata: Tuple[ImplementationPath, List[int]] = (impl_path, list(captures))

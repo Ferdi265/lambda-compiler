@@ -1,6 +1,5 @@
 from ...ast.mlir import *
 from ...parse.mlir import parse_mlir
-from ...ordered_set import OrderedSet
 import os.path
 
 class CollectDepsError(Exception):
@@ -23,7 +22,7 @@ def load_crate(crate: str, crate_path: List[str]) -> List[Statement]:
         return parse_mlir(code, crate_src)
 
 def collect_deps(crate: str, prog: List[Statement], crate_path: List[str]) -> Tuple[List[Statement], List[str]]:
-    found_crates: OrderedSet[str] = OrderedSet()
+    found_crates: Set[str] = set()
     crate_order: List[str] = []
     collected: List[Statement] = []
 
@@ -40,8 +39,8 @@ def collect_deps(crate: str, prog: List[Statement], crate_path: List[str]) -> Tu
         if collect:
             collected += prog
 
-    def referenced_crates(prog: List[Statement]) -> OrderedSet[str]:
-        ref_crates: OrderedSet[str] = OrderedSet()
+    def referenced_crates(prog: List[Statement]) -> Set[str]:
+        ref_crates: Set[str] = set()
 
         for stmt in prog:
             match stmt:

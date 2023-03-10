@@ -6,7 +6,6 @@ from collections import defaultdict
 from .runtime import lambda_runtime_llir
 from .target import Architecture
 from ...ast.mlir import *
-from ...ordered_set import OrderedSet
 
 class GenerateLLIRError(Exception):
     pass
@@ -109,11 +108,11 @@ class GenerateLLIRContext:
     arch: Architecture
 
     llir: str = ""
-    instance_type_cache: OrderedSet[int] = field(default_factory = OrderedSet)
-    extern_cache: OrderedSet[str] = field(default_factory = OrderedSet)
-    global_cache: OrderedSet[Path] = field(default_factory = OrderedSet)
-    inst_cache: OrderedSet[InstancePath] = field(default_factory = OrderedSet)
-    impl_cache: OrderedSet[ImplementationPath] = field(default_factory = OrderedSet)
+    instance_type_cache: Set[int] = field(default_factory = set)
+    extern_cache: Set[str] = field(default_factory = set)
+    global_cache: Set[Path] = field(default_factory = set)
+    inst_cache: Set[InstancePath] = field(default_factory = set)
+    impl_cache: Set[ImplementationPath] = field(default_factory = set)
     init_cache: List[Definition] = field(default_factory = list)
 
     def mangle_crate_init(self, crate: str) -> str:
