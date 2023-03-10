@@ -23,6 +23,9 @@ class OrderedSet(Generic[T]):
     def __copy__(self) -> OrderedSet[T]:
         return OrderedSet(self)
 
+    def __len__(self) -> int:
+        return len(self.data)
+
     def __iter__(self) -> Iterator[T]:
         return iter(self.data)
 
