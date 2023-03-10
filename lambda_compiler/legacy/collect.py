@@ -69,7 +69,7 @@ class Loader(ABC):
 @dataclass
 class RootNamespace:
     main_crate: str
-    blacklist_crates: OrderedSet[str] = field(default_factory = OrderedSet)
+    blacklist_crates: Set[str] = field(default_factory = set)
     crates: Dict[str, ModuleNamespace] = field(default_factory = dict)
 
     def insert_crate(self, crate: ModuleNamespace):
