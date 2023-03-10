@@ -1,5 +1,14 @@
-from lambda_compiler.legacy import *
-import lambda_compiler
+from typing import *
+from lambda_compiler.version import __version__
+from lambda_compiler.legacy.parse_hlir import parse_hlir
+from lambda_compiler.legacy.resolve import resolve
+from lambda_compiler.legacy.rechain import rechain
+from lambda_compiler.legacy.continuations import compute_continuations
+from lambda_compiler.legacy.flattenimpls import flatten_implementations
+from lambda_compiler.legacy.renumber import renumber_captures
+from lambda_compiler.legacy.reorder import reorder_implementations
+from lambda_compiler.legacy.definitions import add_definitions
+from lambda_compiler.legacy.pretty_mlir import pretty_mlir
 import argparse
 import os.path
 import sys
@@ -19,7 +28,7 @@ def main():
     ap, args = parse_args()
 
     if args.version:
-        print(f"{ap.prog} {lambda_compiler.__version__}")
+        print(f"{ap.prog} {__version__}")
         return
 
     infile = args.input

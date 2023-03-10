@@ -1,6 +1,9 @@
-from lambda_compiler.legacy import *
-from lambda_compiler.search_path import *
-import lambda_compiler
+from typing import *
+from lambda_compiler.version import __version__
+from lambda_compiler.search_path import get_crate_search_path
+from lambda_compiler.legacy.loader import CratePathLoader
+from lambda_compiler.legacy.collect import collect_crate
+from lambda_compiler.legacy.pretty_deps import pretty_make_deps
 import argparse
 import os.path
 import sys

@@ -1,6 +1,10 @@
-from lambda_compiler.legacy import *
-from lambda_compiler.search_path import *
-import lambda_compiler
+from typing import *
+from lambda_compiler.version import __version__
+from lambda_compiler.search_path import get_crate_search_path
+from lambda_compiler.legacy.loader import CratePathLoader
+from lambda_compiler.legacy.collect import collect_crate
+from lambda_compiler.legacy.demacro import demacro
+from lambda_compiler.legacy.pretty_hlir import pretty_hlir
 import argparse
 import os.path
 import sys
@@ -23,7 +27,7 @@ def main():
     ap, args = parse_args()
 
     if args.version:
-        print(f"{ap.prog} {lambda_compiler.__version__}")
+        print(f"{ap.prog} {__version__}")
         return
 
     infile = args.input
