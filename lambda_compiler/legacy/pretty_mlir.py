@@ -61,8 +61,6 @@ def pretty_mlir(prog: List[Statement], file: TextIO = sys.stdout):
             case ImplementationLiteral(impl):
                 captures = " ".join(f"${id}" for id in impl.anonymous_captures)
                 return f"{impl.path}!{impl.lambda_id}!{impl.continuation_id}[{captures}]"
-            case InstanceLiteral(inst):
-                return f"{inst.path}%{inst.inst_id}"
             case _:
                 raise PrettyMLIRError(f"unexpected AST node encountered: {lit}")
 
