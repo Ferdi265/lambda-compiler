@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import *
 from dataclasses import dataclass, field
-from ..ordered_set import OrderedSet
+from .ordered_set import OrderedSet
 
 @dataclass
 class Statement:

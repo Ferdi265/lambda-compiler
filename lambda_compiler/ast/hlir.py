@@ -1,6 +1,5 @@
 from __future__ import annotations
 from .path import *
-from ..ordered_set import OrderedSet
 
 @dataclass
 class Statement:
@@ -48,7 +47,7 @@ class Call(Expr):
 class Lambda(Expr):
     name: str
     body: Expr
-    captures: OrderedSet[str] = field(default_factory = OrderedSet)
+    captures: List[str] = field(default_factory = list)
 
 @dataclass
 class Ident(Expr):
