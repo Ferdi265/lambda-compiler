@@ -47,7 +47,6 @@ class Call(Expr):
 class Lambda(Expr):
     name: str
     body: Expr
-    captures: List[str] = field(default_factory = list)
 
 @dataclass
 class Ident(Expr):
