@@ -1,4 +1,5 @@
-from .parser import *
+from typing import *
+from .parser import Token
 from .lang import NumberParser
 from ..ast.hlir import *
 

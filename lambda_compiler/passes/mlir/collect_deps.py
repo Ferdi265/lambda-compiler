@@ -1,6 +1,6 @@
 from ...ast.mlir import *
-from ...parse.mlir import *
-from ...ordered_set import *
+from ...parse.mlir import parse_mlir
+from ...ordered_set import OrderedSet
 import os.path
 
 class CollectDepsError(Exception):

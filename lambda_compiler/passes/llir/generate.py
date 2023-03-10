@@ -1,12 +1,12 @@
 from __future__ import annotations
+from typing import *
 from dataclasses import dataclass, field
 from collections import defaultdict
-from typing import *
 
-from ...ordered_set import *
+from .runtime import lambda_runtime_llir
+from .target import Architecture
 from ...ast.mlir import *
-from .runtime import *
-from .target import *
+from ...ordered_set import OrderedSet
 
 class GenerateLLIRError(Exception):
     pass

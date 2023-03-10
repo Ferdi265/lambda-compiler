@@ -1,6 +1,6 @@
 from __future__ import annotations
 from .path import *
-from ..ordered_set import *
+from ..ordered_set import OrderedSet
 
 @dataclass
 class Statement:

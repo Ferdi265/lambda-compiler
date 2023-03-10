@@ -1,3 +1,4 @@
+from __future__ import annotations
 from ...ast.mlir_linked import *
 from collections import defaultdict
 
@@ -163,96 +164,97 @@ class DedupMLIRContext:
         self.insert_inst(inst, hash_value)
         return self.inst_dedup[hash_value]
 
-def build_dedup_context(prog: List[Statement]) -> DedupMLIRContext:
-    ctx = DedupMLIRContext()
-    ctx.deduplicate(prog)
-    return ctx
+    @staticmethod
+    def build(prog: List[Statement]) -> DedupMLIRContext:
+        ctx = DedupMLIRContext()
+        ctx.deduplicate(prog)
+        return ctx
 
-def collect_dedup_context(ctx: DedupMLIRContext) -> List[Statement]:
-    return (
-        cast(List[Statement], ctx.extern_crates) +
-        cast(List[Statement], ctx.definitions) +
-        cast(List[Statement], ctx.implementations) +
-        cast(List[Statement], ctx.instances)
-    )
+    def collect(self) -> List[Statement]:
+        return (
+            cast(List[Statement], self.extern_crates) +
+            cast(List[Statement], self.definitions) +
+            cast(List[Statement], self.implementations) +
+            cast(List[Statement], self.instances)
+        )
 
-def tree_shake_dedup_context(ctx: DedupMLIRContext, opt_deps: Optional[List[Statement]] = None) -> List[Statement]:
-    inst_counter: DefaultDict[Path, int] = defaultdict(int)
-    prog: List[Statement] = []
-    deps = opt_deps or []
+    def tree_shake(self, opt_deps: Optional[List[Statement]] = None) -> List[Statement]:
+        inst_counter: DefaultDict[Path, int] = defaultdict(int)
+        prog: List[Statement] = []
+        deps = opt_deps or []
 
-    def visit_def(defi: LinkedDefinition, ctx: DedupMLIRContext):
-        if defi in deps:
-            return
-        if defi in prog:
-            return
+        def visit_def(defi: LinkedDefinition):
+            if defi in deps:
+                return
+            if defi in prog:
+                return
 
-        visit_inst(defi.inst, ctx)
+            visit_inst(defi.inst)
 
-        prog.append(defi)
+            prog.append(defi)
 
-    def visit_inst(inst: LinkedInstance, ctx: DedupMLIRContext):
-        if inst in deps:
-            return
-        if inst in prog:
-            return
+        def visit_inst(inst: LinkedInstance):
+            if inst in deps:
+                return
+            if inst in prog:
+                return
 
-        visit_impl(inst.impl, ctx)
+            visit_impl(inst.impl)
 
-        for capture in inst.captures:
-            visit_inst(capture, ctx)
+            for capture in inst.captures:
+                visit_inst(capture)
 
-        prog.append(inst)
+            prog.append(inst)
 
-    def visit_impl(impl: Implementation, ctx: DedupMLIRContext):
-        if impl in deps:
-            return
-        if impl in prog:
-            return
+        def visit_impl(impl: Implementation):
+            if impl in deps:
+                return
+            if impl in prog:
+                return
 
-        match impl:
-            case ReturnImplementation() as impl:
-                visit_lit(impl.value, ctx)
-            case TailCallImplementation() as impl:
-                visit_lit(impl.fn, ctx)
-                visit_lit(impl.arg, ctx)
-            case ContinueCallImplementation() as impl:
-                visit_lit(impl.fn, ctx)
-                visit_lit(impl.arg, ctx)
-                visit_lit(impl.next, ctx)
-            case _:
-                raise DedupMLIRError(f"unexpected AST node encountered: {impl}")
+            match impl:
+                case ReturnImplementation() as impl:
+                    visit_lit(impl.value)
+                case TailCallImplementation() as impl:
+                    visit_lit(impl.fn)
+                    visit_lit(impl.arg)
+                case ContinueCallImplementation() as impl:
+                    visit_lit(impl.fn)
+                    visit_lit(impl.arg)
+                    visit_lit(impl.next)
+                case _:
+                    raise DedupMLIRError(f"unexpected AST node encountered: {impl}")
 
-        prog.append(impl)
+            prog.append(impl)
 
-    def visit_lit(lit: ValueLiteral, ctx: DedupMLIRContext):
-        match lit:
-            case LinkedDefinitionLiteral(defi):
-                visit_def(defi, ctx)
-            case LinkedInstanceLiteral(inst):
-                visit_inst(inst, ctx)
-            case LinkedImplementationLiteral(impl, captures):
-                visit_impl(impl, ctx)
-                for cap in captures:
-                    if isinstance(cap, LinkedInstance):
-                        visit_inst(cap, ctx)
+        def visit_lit(lit: ValueLiteral):
+            match lit:
+                case LinkedDefinitionLiteral(defi):
+                    visit_def(defi)
+                case LinkedInstanceLiteral(inst):
+                    visit_inst(inst)
+                case LinkedImplementationLiteral(impl, captures):
+                    visit_impl(impl)
+                    for cap in captures:
+                        if isinstance(cap, LinkedInstance):
+                            visit_inst(cap)
 
-    for crate in ctx.extern_crates:
-        prog.append(crate)
+        for crate in self.extern_crates:
+            prog.append(crate)
 
-    for defi in ctx.definitions:
-        visit_def(defi, ctx)
+        for defi in self.definitions:
+            visit_def(defi)
 
-    for stmt in prog:
-        if not isinstance(stmt, Instance):
-            continue
+        for stmt in prog:
+            if not isinstance(stmt, LinkedInstance):
+                continue
 
-        stmt.path = InstancePath(stmt.path.path, inst_counter[stmt.path.path])
-        inst_counter[stmt.path.path] += 1
+            stmt.path = InstancePath(stmt.path.path, inst_counter[stmt.path.path])
+            inst_counter[stmt.path.path] += 1
 
-    return prog
+        return prog
 
 def dedup_mlir(prog: List[Statement], opt_deps: Optional[List[Statement]] = None) -> List[Statement]:
     deps = opt_deps or []
-    ctx = build_dedup_context(deps + prog)
-    return tree_shake_dedup_context(ctx, deps)
+    ctx = DedupMLIRContext.build(deps + prog)
+    return ctx.tree_shake(deps)

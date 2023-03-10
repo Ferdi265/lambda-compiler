@@ -1,6 +1,8 @@
-from .parser import *
+from typing import *
+from .parser import Token
 from .lang import NumberParser
 from ..ast.mlir import *
+from ..ordered_set import OrderedSet
 
 def parse_mlir(code: str, file: str) -> List[Statement]:
     p = NumberParser(code, file)

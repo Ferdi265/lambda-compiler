@@ -1,6 +1,7 @@
-from .parser import *
+from typing import *
+from .parser import Token
 from .path import PathParser
-from lambda_compiler.ast.lang import *
+from ..ast.lang import *
 import ast as pyast
 
 class NumberParser(PathParser):

@@ -1,4 +1,4 @@
-from .parser import *
+from .parser import Parser, Token
 from ..ast.path import *
 
 class PathParser(Parser):

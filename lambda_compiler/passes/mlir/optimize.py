@@ -1,5 +1,6 @@
+from collections import defaultdict
 from ...ast.mlir_linked import *
-from .dedup import *
+from .dedup import DedupMLIRContext
 
 class OptimizeNotYetSeenError(Exception):
     pass
@@ -95,7 +96,7 @@ def optimize_mlir(prog: List[Statement], opt_deps: Optional[List[Statement]] = N
     deps = opt_deps or []
 
     def visit_program(prog: List[Statement]) -> List[Statement]:
-        dedup = build_dedup_context(deps + prog)
+        dedup = DedupMLIRContext.build(deps + prog)
         ctx = OptimizeContext(dedup)
 
         for stmt in deps + prog:
@@ -104,8 +105,8 @@ def optimize_mlir(prog: List[Statement], opt_deps: Optional[List[Statement]] = N
         for stmt in prog:
             visit_statement_instantiate(stmt, ctx)
 
-        prog = collect_dedup_context(ctx.dedup)
-        return dedup_mlir(prog, deps)
+        ctx.dedup.deduplicate(ctx.dedup.collect())
+        return ctx.dedup.tree_shake(deps)
 
     def visit_statement_find_impls(stmt: Statement, ctx: OptimizeContext):
         match stmt:
