@@ -48,7 +48,7 @@ def parse_lang(code: str, file: str) -> List[Statement]:
         elif p.token == Token.Ident:
             name = p.eat()
             if p.token == Token.PathSep:
-                return Relative(parse_path(name))
+                return Relative(p.parse_relative_path(name))
             elif p.token == Token.Arrow:
                 p.drop()
                 return Lambda(name, parse_chain())
