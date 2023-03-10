@@ -30,13 +30,18 @@ def parse_mlir(code: str, file: str) -> List[Statement]:
 
         return ImplementationPath(impl_path, lambda_id, continuation_id)
 
-    def parse_extern_crate() -> ExternCrate:
+    def parse_extern() -> ExternCrate | Extern:
         p.eat(Token.Extern)
-        p.eat(Token.Crate)
-        name = p.eat(Token.Ident)
-        p.eat(Token.SemiColon)
 
-        return ExternCrate(name)
+        if p.token == Token.Crate:
+            p.eat()
+            name = p.eat(Token.Ident)
+            p.eat(Token.SemiColon)
+            return ExternCrate(name)
+        else:
+            name = p.eat(Token.Ident)
+            p.eat(Token.SemiColon)
+            return Extern(name)
 
     def parse_def() -> Definition:
         is_public = False
@@ -144,7 +149,7 @@ def parse_mlir(code: str, file: str) -> List[Statement]:
 
     def parse_statement() -> Statement:
         if p.token == Token.Extern:
-            return parse_extern_crate()
+            return parse_extern()
         elif p.token == Token.Impl:
             return parse_impl()
         elif p.token == Token.Inst:

@@ -11,6 +11,7 @@ class DedupMLIRError(Exception):
 @dataclass
 class DedupMLIRContext:
     extern_crates: List[ExternCrate] = field(default_factory = list)
+    externs: List[Extern] = field(default_factory = list)
     implementations: List[Implementation] = field(default_factory = list)
     instances: List[LinkedInstance] = field(default_factory = list)
     definitions: List[LinkedDefinition] = field(default_factory = list)
@@ -103,6 +104,9 @@ class DedupMLIRContext:
     def hash_crate(self, crate: ExternCrate) -> tuple:
         return ("crate", crate.name)
 
+    def hash_extern(self, extern: Extern) -> tuple:
+        return ("extern", extern.name)
+
     def insert_impl(self, impl: Implementation, hash_value: tuple):
         self.impl_hash[impl.path] = hash_value
         if hash_value not in self.impl_dedup:
@@ -122,6 +126,10 @@ class DedupMLIRContext:
         if crate not in self.extern_crates:
             self.extern_crates.append(crate)
 
+    def insert_extern(self, extern: Extern):
+        if extern not in self.externs:
+            self.externs.append(extern)
+
     def deduplicate(self, prog: List[Statement]):
         queue = prog[:]
         while len(queue) > 0:
@@ -130,6 +138,8 @@ class DedupMLIRContext:
                 match stmt:
                     case ExternCrate() as crate:
                         hash_value = self.hash_crate(crate)
+                    case Extern() as extern:
+                        hash_value = self.hash_extern(extern)
                     case Implementation() as impl:
                         hash_value = self.hash_impl(impl)
                     case LinkedInstance() as inst:
@@ -147,6 +157,8 @@ class DedupMLIRContext:
                 match stmt:
                     case ExternCrate() as crate:
                         self.insert_crate(crate)
+                    case Extern() as extern:
+                        self.insert_extern(extern)
                     case Implementation() as impl:
                         self.insert_impl(impl, hash_value)
                     case LinkedInstance() as inst:
@@ -173,6 +185,7 @@ class DedupMLIRContext:
     def collect(self) -> List[Statement]:
         return (
             cast(List[Statement], self.extern_crates) +
+            cast(List[Statement], self.externs) +
             cast(List[Statement], self.definitions) +
             cast(List[Statement], self.implementations) +
             cast(List[Statement], self.instances)
@@ -241,6 +254,9 @@ class DedupMLIRContext:
 
         for crate in self.extern_crates:
             prog.append(crate)
+
+        for extern in self.externs:
+            prog.append(extern)
 
         for defi in self.definitions:
             visit_def(defi)
