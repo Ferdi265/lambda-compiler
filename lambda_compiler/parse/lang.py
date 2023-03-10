@@ -1,4 +1,5 @@
-from .path import *
+from .parser import *
+from .path import PathParser
 from lambda_compiler.ast.lang import *
 import ast as pyast
 

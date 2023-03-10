@@ -1,8 +1,8 @@
-from .lang import *
+from .parser import *
+from .lang import NumberParser
 from ..ast.hlir import *
 
 def parse_hlir(code: str, file: str, stub: bool = False) -> List[Statement]:
-
     p = NumberParser(code, file)
 
     def parse_paren() -> Paren:
@@ -21,7 +21,7 @@ def parse_hlir(code: str, file: str, stub: bool = False) -> List[Statement]:
         elif p.token == Token.Ident:
             name = p.eat()
             if p.token == Token.PathSep:
-                expr = Absolute(parse_path(name))
+                expr = Absolute(p.parse_absolute_path(name))
             elif p.token == Token.Arrow:
                 p.drop()
                 expr = Lambda(name, parse_chain())
@@ -49,7 +49,7 @@ def parse_hlir(code: str, file: str, stub: bool = False) -> List[Statement]:
             is_impure = True
 
         name = p.eat(Token.Ident)
-        path = parse_path(name)
+        path = p.parse_absolute_path(name)
 
         p.eat(Token.Assign)
 

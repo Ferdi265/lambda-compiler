@@ -28,7 +28,7 @@ def main():
     ap, args = parse_args()
 
     if args.version:
-        print(f"{ap.prog} {lambda_compiler.__version__}")
+        print(f"{ap.prog} {__version__}")
         return
 
     infile = args.input
