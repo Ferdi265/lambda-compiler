@@ -1,4 +1,4 @@
-from .resolve import *
+from .collect import *
 import sys
 
 class PrettyHLIRError(Exception):
