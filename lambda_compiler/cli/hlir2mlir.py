@@ -1,14 +1,8 @@
 from typing import *
 from lambda_compiler.version import __version__
-from lambda_compiler.legacy.parse_hlir import parse_hlir
-from lambda_compiler.legacy.resolve import resolve
-from lambda_compiler.legacy.rechain import rechain
-from lambda_compiler.legacy.continuations import compute_continuations
-from lambda_compiler.legacy.flattenimpls import flatten_implementations
-from lambda_compiler.legacy.renumber import renumber_captures
-from lambda_compiler.legacy.reorder import reorder_implementations
-from lambda_compiler.legacy.definitions import add_definitions
-from lambda_compiler.legacy.pretty_mlir import pretty_mlir
+from lambda_compiler.parse.hlir import parse_hlir
+from lambda_compiler.passes.hlir.compile import compile_hlir
+from lambda_compiler.pretty.mlir import pretty_mlir
 import argparse
 import os.path
 import sys
@@ -47,16 +41,10 @@ def main():
         code = f.read()
 
     ast = parse_hlir(code, infile)
-    ast = resolve(ast)
-    ast = rechain(ast)
-    ast = compute_continuations(ast)
-    ast = flatten_implementations(ast)
-    ast = renumber_captures(ast)
-    ast = reorder_implementations(ast)
-    ast = add_definitions(ast)
+    mlir = compile_hlir(ast)
 
     with sys.stdout if outfile == "-" else open(outfile, "w") as f:
-        pretty_mlir(ast, file=f)
+        pretty_mlir(mlir, file=f)
 
 if __name__ == "__main__":
     main()
