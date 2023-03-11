@@ -2,7 +2,7 @@ from ...ast.mlir import *
 from ...parse.mlir import parse_mlir
 import os.path
 
-class CollectDepsError(Exception):
+class CollectMLIRError(Exception):
     pass
 
 def load_crate(crate: str, crate_path: List[str]) -> List[Statement]:
@@ -15,7 +15,7 @@ def load_crate(crate: str, crate_path: List[str]) -> List[Statement]:
         if os.path.isfile(crate_src):
             break
     else:
-        raise CollectDepsError(f"did not find crate '{crate}'")
+        raise CollectMLIRError(f"did not find crate '{crate}'")
 
     with open(crate_src) as f:
         code = f.read()
