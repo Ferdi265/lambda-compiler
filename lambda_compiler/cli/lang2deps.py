@@ -1,9 +1,8 @@
 from typing import *
 from lambda_compiler.version import __version__
 from lambda_compiler.search_path import get_crate_search_path
-from lambda_compiler.legacy.loader import CratePathLoader
-from lambda_compiler.legacy.collect import collect_crate
-from lambda_compiler.legacy.pretty_deps import pretty_make_deps
+from lambda_compiler.passes.lang.collect_deps import collect_crate
+from lambda_compiler.pretty.deps import pretty_make_deps
 import argparse
 import os.path
 import sys
@@ -47,12 +46,10 @@ def main():
     if output_dir is None:
         output_dir = "."
 
-    loader = CratePathLoader(crate_path, allow_hlir = False)
-    ast, root = collect_crate(infile, loader)
-    crate_order = root.crate_order()
+    crate = collect_crate(infile, crate_path, allow_hlir=False)
 
     with sys.stdout if outfile == "-" else open(outfile, "w") as f:
-        pretty_make_deps(crate_order, outfile, output_dir, file=f)
+        pretty_make_deps(crate.file, outfile, output_dir, file=f)
 
 if __name__ == "__main__":
     main()

@@ -1,7 +1,7 @@
 from .hlir import *
 
 @dataclass
-class LinkedExternCrate(Statement):
+class SourceFile:
     name: str
 
     dir: str
@@ -9,3 +9,9 @@ class LinkedExternCrate(Statement):
     owns_dir: bool
 
     prog: List[Statement]
+
+@dataclass
+class LinkedExternCrate(Statement):
+    name: str
+
+    file: SourceFile
