@@ -120,27 +120,6 @@ class RootNamespace:
         else:
             return self.resolve_absolute(path)
 
-    def mod_order(self) -> List[ModuleNamespace]:
-        return self.crates[self.main_crate].mod_order()
-
-    def crate_order(self, crate_order: Optional[List[ModuleNamespace]] = None) -> List[ModuleNamespace]:
-        if crate_order is None:
-            crate_order = []
-
-        main_crate = self.crates[self.main_crate]
-        for crate in crate_order:
-            if crate.get_name() == main_crate.get_name():
-                return crate_order
-
-        for mod in self.crates.values():
-            if mod.root is self:
-                continue
-
-            mod.root.crate_order(crate_order)
-
-        crate_order.insert(0, main_crate)
-        return crate_order
-
 @dataclass
 class ModuleNamespace:
     root: RootNamespace
@@ -226,23 +205,6 @@ class ModuleNamespace:
                 return submod.module.resolve(rest_path, allow_private = False)
             case _:
                 raise CollectCrateError(f"unexpected entry type encountered: {entry}")
-
-    def mod_order(self, mod_order: Optional[List[ModuleNamespace]] = None) -> List[ModuleNamespace]:
-        if mod_order is None:
-            mod_order = []
-
-        if self in mod_order:
-            return mod_order
-
-        for entry in self.entries.values():
-            if not isinstance(entry, SubModule):
-                continue
-
-            mod = entry.module
-            mod.mod_order(mod_order)
-
-        mod_order.insert(0, self)
-        return mod_order
 
 @dataclass
 class CollectExprContext:
