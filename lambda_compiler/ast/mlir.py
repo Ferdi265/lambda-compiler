@@ -1,5 +1,7 @@
 from __future__ import annotations
-from .path import *
+from typing import *
+from .path import Path, InstancePath, ImplementationPath
+from dataclasses import dataclass
 
 @dataclass
 class Statement:

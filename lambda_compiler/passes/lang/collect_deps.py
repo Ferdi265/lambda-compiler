@@ -1,5 +1,7 @@
 from __future__ import annotations
-from ...ast.path import *
+from typing import *
+from dataclasses import dataclass
+from ...ast.path import Path
 from ...ast import lang_linked as lang
 from ...ast import hlir_linked as hlir
 from ...parse.lang import parse_lang

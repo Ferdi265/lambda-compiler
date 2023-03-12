@@ -1,5 +1,6 @@
+from typing import *
+from ..ast.path import Path
 from .parser import Parser, Token
-from ..ast.path import *
 
 class PathParser(Parser):
     def parse_relative_path_component(self, first: bool, allow_super: bool) -> str:

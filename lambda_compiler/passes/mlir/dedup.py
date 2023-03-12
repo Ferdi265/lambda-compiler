@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import dataclass, field
 from ...ast.mlir_linked import *
 from collections import defaultdict
 

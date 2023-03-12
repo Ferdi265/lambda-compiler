@@ -1,5 +1,5 @@
 from typing import *
-from ...ast.path import *
+from ...ast.path import Path
 from ...ast import lang_linked as lang
 from ...ast import hlir_linked as hlir
 

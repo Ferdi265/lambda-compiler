@@ -1,4 +1,5 @@
 from collections import defaultdict
+from dataclasses import dataclass, field
 from ...ast.mlir_linked import *
 from .dedup import DedupMLIRContext
 

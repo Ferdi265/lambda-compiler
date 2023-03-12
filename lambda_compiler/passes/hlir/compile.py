@@ -1,5 +1,7 @@
 from __future__ import annotations
+from dataclasses import dataclass, field
 from collections import defaultdict
+from ...ast.path import Path, ImplementationPath, InstancePath
 from ...ast.hlir import *
 from ...ast import mlir
 

@@ -1,4 +1,4 @@
-from ..ast.path import *
+from typing import *
 from ..ast import lang_linked as lang
 from ..ast import hlir_linked as hlir
 from ..passes.lang.dep_order import SourceFile, crate_order, mod_order
