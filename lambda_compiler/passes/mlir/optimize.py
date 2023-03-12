@@ -12,11 +12,7 @@ class OptimizeMLIRError(Exception):
 @dataclass
 class OptimizeContext:
     dedup: DedupMLIRContext
-
     inst_id_table: Dict[Path, int] = field(default_factory = lambda: defaultdict(int))
-
-    definitions: List[LinkedDefinition] = field(default_factory = list)
-    instances: List[LinkedInstance] = field(default_factory = list)
 
     def next_inst_id(self, path: Path) -> int:
         id = self.inst_id_table[path]
@@ -32,9 +28,6 @@ class OptimizeContext:
 
         inst = LinkedInstance(InstancePath(path, self.next_inst_id(path)), impl, captures)
         dedup_inst = self.dedup.dedup_new_inst(inst)
-        if dedup_inst is inst:
-            self.instances.append(inst)
-
         return dedup_inst
 
     def evaluate_definition(self, defi: LinkedDefinition):
