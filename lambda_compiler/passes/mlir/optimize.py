@@ -143,7 +143,7 @@ def optimize_mlir(prog: List[Statement], opt_deps: Optional[List[Statement]] = N
             case _:
                 raise OptimizeMLIRError(f"unexpected AST node encountered: {impl}")
 
-        if len(impl.captures) == 0:
+        if impl.captures == 0:
             ctx.instantiate(impl.path.path, impl, [], [])
 
     def visit_literal(path: Path, lit: ValueLiteral, ctx: OptimizeContext) -> ValueLiteral:

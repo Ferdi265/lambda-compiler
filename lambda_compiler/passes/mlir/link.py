@@ -67,9 +67,7 @@ def link_mlir(prog: List[Statement], deps: Optional[List[Statement]] = None) -> 
     def visit_implementation(impl: Implementation) -> Implementation:
         assert impl.path not in impl_table, "duplicate Implementation"
 
-        impl_metadata: Tuple[ImplementationPath, List[int]] = (
-            impl.path, impl.captures
-        )
+        impl_metadata: Tuple[ImplementationPath, int] = (impl.path, impl.captures)
         new_impl: Implementation
         match impl:
             case ReturnImplementation():
@@ -150,9 +148,7 @@ def unlink_mlir(prog: List[Statement]) -> List[Statement]:
         )
 
     def visit_implementation(impl: Implementation) -> Implementation:
-        impl_metadata: Tuple[ImplementationPath, List[int]] = (
-            impl.path, impl.captures
-        )
+        impl_metadata: Tuple[ImplementationPath, int] = (impl.path, impl.captures)
         new_impl: Implementation
         match impl:
             case ReturnImplementation():

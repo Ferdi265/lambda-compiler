@@ -133,7 +133,7 @@ def parse_mlir(code: str, file: str) -> List[Statement]:
             captures.remove(0)
 
         p.eat(Token.SemiColon)
-        impl_metadata: Tuple[ImplementationPath, List[int]] = (impl_path, list(captures))
+        impl_metadata: Tuple[ImplementationPath, int] = (impl_path, len(captures))
         impl: Implementation
         match (a, b, c):
             case (a, None, None):

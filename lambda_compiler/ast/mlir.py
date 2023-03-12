@@ -31,7 +31,7 @@ class Instance(Statement):
 @dataclass
 class Implementation(Statement):
     path: ImplementationPath
-    captures: List[int]
+    captures: int
 
 @dataclass
 class ReturnImplementation(Implementation):

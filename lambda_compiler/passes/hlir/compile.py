@@ -89,9 +89,6 @@ class LambdaContext:
         capture_list.sort(key = sort_key)
         return capture_list
 
-    def anonymize_captures(self, captures: List[Optional[int | str]]) -> List[int]:
-        return list(range(1, len(captures) + 1))
-
 def compile_hlir(prog: List[Statement]) -> List[mlir.Statement]:
     lambda_id_table: DefaultDict[Path, int] = defaultdict(int)
     def get_lambda_id(path: Path) -> int:
@@ -177,7 +174,7 @@ def compile_hlir(prog: List[Statement]) -> List[mlir.Statement]:
         if len(ctx.calls) == 0:
             ctx.impls.append(mlir.ReturnImplementation(
                 ImplementationPath(ctx.path, ctx.id, 0),
-                ctx.anonymize_captures(capture_lookup),
+                len(capture_lookup) - 1,
                 visit_lit_convert(result.value, capture_lookup, ctx)
             ))
 
@@ -192,20 +189,17 @@ def compile_hlir(prog: List[Statement]) -> List[mlir.Statement]:
             capture_lookup = ctx.sort_captures(captures)
             captures.remove(call.param)
 
-            path = ImplementationPath(ctx.path, ctx.id, call.res)
-            impl_captures = ctx.anonymize_captures(capture_lookup)
+            impl_metadata: Tuple[ImplementationPath, int] = (
+                ImplementationPath(ctx.path, ctx.id, call.res), len(capture_lookup) - 1
+            )
             fn = visit_lit_convert(call.fn, capture_lookup, ctx)
             arg = visit_lit_convert(call.arg, capture_lookup, ctx)
 
             if first:
-                ctx.impls.append(mlir.TailCallImplementation(
-                    path, impl_captures, fn, arg
-                ))
+                ctx.impls.append(mlir.TailCallImplementation(*impl_metadata, fn, arg))
             else:
                 next = visit_lit_convert(ContinuationLiteral(call.res + 1, prev_captures), capture_lookup, ctx)
-                ctx.impls.append(mlir.ContinueCallImplementation(
-                    path, impl_captures, fn, arg, next
-                ))
+                ctx.impls.append(mlir.ContinueCallImplementation(*impl_metadata, fn, arg, next))
 
             first = False
             prev_captures = cast(List[str | int], capture_lookup[1:])
