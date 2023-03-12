@@ -1,10 +1,10 @@
 from typing import *
 from lambda_compiler.version import __version__
 from lambda_compiler.search_path import get_crate_search_path
-from lambda_compiler.legacy.loader import CratePathLoader
-from lambda_compiler.legacy.collect import collect_crate
-from lambda_compiler.legacy.demacro import demacro
-from lambda_compiler.legacy.pretty_hlir import pretty_hlir
+from lambda_compiler.passes.lang.collect_deps import collect_crate
+from lambda_compiler.passes.lang.demacro import demacro
+from lambda_compiler.passes.lang.resolve import resolve
+from lambda_compiler.pretty.hlir import pretty_hlir
 import argparse
 import os.path
 import sys
@@ -44,12 +44,12 @@ def main():
     if outfile is None:
         outfile = os.path.join(infile_dir, infile_name + (".hlis" if args.stub else ".hlir"))
 
-    loader = CratePathLoader(crate_path)
-    ast, root = collect_crate(infile, loader)
-    ast = demacro(ast)
+    crate = collect_crate(infile, crate_path, allow_hlir=True)
+    crate.file.prog = demacro(crate.file.prog)
+    hlir = resolve(crate)
 
     with sys.stdout if outfile == "-" else open(outfile, "w") as f:
-        pretty_hlir(ast, file=f, stub=args.stub)
+        pretty_hlir(hlir, file=f, stub=args.stub)
 
 if __name__ == "__main__":
     main()

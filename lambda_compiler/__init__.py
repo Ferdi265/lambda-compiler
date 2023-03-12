@@ -5,4 +5,3 @@ from . import passes
 from . import pretty
 from . import search_path
 from . import cli
-from . import legacy

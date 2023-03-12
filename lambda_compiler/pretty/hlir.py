@@ -47,7 +47,7 @@ def pretty_hlir(prog: List[Statement], file: TextIO = sys.stdout, stub: bool = F
                 visit_expr(fn)
                 print(" ", end="", file=file)
                 visit_expr(arg)
-            case Lambda(name, body, captures):
+            case Lambda(name, body):
                 print(f"{name} -> ", end="", file=file)
                 visit_expr(body)
             case Ident(name):

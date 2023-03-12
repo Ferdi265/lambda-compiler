@@ -94,10 +94,6 @@ def load_crate(crate: str, crate_path: List[str], blacklist_crates: Set[str], al
 
     return lang.LinkedExternCrate(crate, file)
 
-def load_hlir_crate(crate: str, crate_path: List[str], blacklist_crates: Set[str]) -> hlir.LinkedExternCrate:
-    linked_crate = load_crate(crate, crate_path, blacklist_crates, allow_hlir=True, allow_lang=False)
-    return hlir.LinkedExternCrate(linked_crate.name, cast(hlir.SourceFile, linked_crate.file))
-
 def load_mod(path: Path, mod: lang.SourceFile, name: str, is_public: bool) -> lang.LinkedMod:
     found = False
 
@@ -145,16 +141,31 @@ class CollectCrateContext:
     path: Path
 
     blacklist_crates: Set[str]
+    loaded_crates: Dict[str, lang.LinkedExternCrate]
 
     @staticmethod
     def initial_crate(crate: lang.LinkedExternCrate) -> CollectCrateContext:
-        return CollectCrateContext(crate.file, Path(()) / crate.name, set([crate.name]))
+        return CollectCrateContext(crate.file, Path(()) / crate.name, set([crate.name]), {})
 
     def crate(self, crate: lang.LinkedExternCrate | hlir.LinkedExternCrate) -> CollectCrateContext:
-        return CollectCrateContext(crate.file, Path(()) / crate.name, self.blacklist_crates | set([crate.name]))
+        return CollectCrateContext(crate.file, Path(()) / crate.name, self.blacklist_crates | set([crate.name]), self.loaded_crates)
 
     def mod(self, mod: lang.LinkedMod) -> CollectCrateContext:
-        return CollectCrateContext(mod.file, self.path / mod.name, set(self.blacklist_crates))
+        return CollectCrateContext(mod.file, self.path / mod.name, set(self.blacklist_crates), self.loaded_crates)
+
+    def load_crate(self, crate: str, crate_path: List[str], allow_hlir: bool, allow_lang: bool) -> lang.LinkedExternCrate:
+        if crate in self.blacklist_crates:
+            raise CollectCrateError(f"cyclical dependency on crate '{crate}'")
+
+        if crate not in self.loaded_crates:
+            self.loaded_crates[crate] = load_crate(crate, crate_path, self.blacklist_crates, allow_hlir, allow_lang)
+
+        return self.loaded_crates[crate]
+
+    def load_hlir_crate(self, crate: str, crate_path: List[str]) -> hlir.LinkedExternCrate:
+        loaded_crate = self.load_crate(crate, crate_path, allow_hlir=True, allow_lang=False)
+        assert isinstance(loaded_crate.file, hlir.SourceFile)
+        return hlir.LinkedExternCrate(loaded_crate.name, loaded_crate.file)
 
 def collect_crate(file_path: str, crate_path: List[str], allow_hlir: bool) -> lang.LinkedExternCrate:
     def visit_source_file(file: lang.SourceFile | hlir.SourceFile, ctx: CollectCrateContext, allow_hlir: bool):
@@ -178,7 +189,7 @@ def collect_crate(file_path: str, crate_path: List[str], allow_hlir: bool) -> la
     def visit_lang_statement(stmt: lang.Statement, ctx: CollectCrateContext) -> lang.Statement:
         match stmt:
             case lang.ExternCrate(name):
-                crate = load_crate(name, crate_path, ctx.blacklist_crates, allow_hlir=allow_hlir, allow_lang=True)
+                crate = ctx.load_crate(name, crate_path, allow_hlir=allow_hlir, allow_lang=True)
                 visit_source_file(crate.file, ctx.crate(crate), allow_hlir=allow_hlir)
                 return crate
             case lang.Mod(name, is_public):
@@ -195,7 +206,7 @@ def collect_crate(file_path: str, crate_path: List[str], allow_hlir: bool) -> la
     def visit_hlir_statement(stmt: hlir.Statement, ctx: CollectCrateContext) -> hlir.Statement:
         match stmt:
             case hlir.ExternCrate(name):
-                crate = load_hlir_crate(name, crate_path, ctx.blacklist_crates)
+                crate = ctx.load_hlir_crate(name, crate_path)
                 visit_hlir_source_file(crate.file, ctx.crate(crate))
                 return crate
             case _:
