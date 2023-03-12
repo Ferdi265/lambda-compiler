@@ -12,7 +12,18 @@ setup(
     version = __version__,
     author = "Ferdinand Bachmann",
     author_email = "theferdi265@gmail.com",
-    packages = ["lambda_compiler", "lambda_compiler.cli"],
+    packages = [
+        "lambda_compiler",
+        "lambda_compiler.ast",
+        "lambda_compiler.parse",
+        "lambda_compiler.passes",
+        "lambda_compiler.passes.lang",
+        "lambda_compiler.passes.hlir",
+        "lambda_compiler.passes.mlir",
+        "lambda_compiler.passes.llir",
+        "lambda_compiler.pretty",
+        "lambda_compiler.cli",
+    ],
     entry_points = {
         "console_scripts": [
             "lambda-lang2deps=lambda_compiler.cli.lang2deps:main",
