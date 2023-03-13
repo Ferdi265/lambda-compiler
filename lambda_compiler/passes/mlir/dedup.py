@@ -276,12 +276,19 @@ class DedupMLIRContext:
                             cap, _ = self.dedup_inst(cap)
                             captures[i] = cap
                             visit_inst(cap)
+                case ExternLiteral() as ext:
+                    visit_extern(ext)
+
+        def visit_extern(ext: ExternLiteral):
+            for stmt in prog:
+                if isinstance(stmt, Extern) and stmt.name == ext.name:
+                    return
+
+            prog.append(Extern(ext.name))
+
 
         for crate in self.extern_crates:
             prog.append(crate)
-
-        for extern in self.externs:
-            prog.append(extern)
 
         for defi in self.definitions:
             visit_def(defi)

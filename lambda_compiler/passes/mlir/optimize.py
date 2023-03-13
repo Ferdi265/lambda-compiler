@@ -160,27 +160,28 @@ class OptimizeContext:
             return new_impl
 
     def optimize_substitute_impl(self, old_impl: Implementation, impl: Implementation, captures: List[int | LinkedInstance]) -> Implementation:
+        path = old_impl.path.path
         impl_metadata: Tuple[ImplementationPath, int] = (old_impl.path, old_impl.captures)
         match impl:
             case ReturnImplementation():
                 return ReturnImplementation(*impl_metadata,
-                    self.optimize_literal(impl.value, captures)
+                    self.optimize_literal(path, impl.value, captures)
                 )
             case TailCallImplementation():
                 return TailCallImplementation(*impl_metadata,
-                    self.optimize_literal(impl.fn, captures),
-                    self.optimize_literal(impl.arg, captures)
+                    self.optimize_literal(path, impl.fn, captures),
+                    self.optimize_literal(path, impl.arg, captures)
                 )
             case ContinueCallImplementation():
                 return ContinueCallImplementation(*impl_metadata,
-                    self.optimize_literal(impl.fn, captures),
-                    self.optimize_literal(impl.arg, captures),
-                    self.optimize_literal(impl.next, captures),
+                    self.optimize_literal(path, impl.fn, captures),
+                    self.optimize_literal(path, impl.arg, captures),
+                    self.optimize_literal(path, impl.next, captures),
                 )
             case _:
                 raise OptimizeMLIRError(f"unexpected AST node encountered: {impl}")
 
-    def optimize_literal(self, lit: ValueLiteral, captures: List[int | LinkedInstance]) -> ValueLiteral:
+    def optimize_literal(self, path: Path, lit: ValueLiteral, captures: List[int | LinkedInstance]) -> ValueLiteral:
         match lit:
             case CaptureLiteral(id):
                 match captures[id]:
@@ -191,10 +192,11 @@ class OptimizeContext:
                     case other:
                         raise OptimizeMLIRError(f"unexpected AST node encountered: {other}")
             case LinkedImplementationLiteral(impl, impl_captures):
-                return LinkedImplementationLiteral(
-                    impl,
-                    [captures[cap] if isinstance(cap, int) else cap for cap in impl_captures]
-                )
+                new_captures = [captures[cap] if isinstance(cap, int) else cap for cap in impl_captures]
+                if all(isinstance(cap, LinkedInstance) for cap in new_captures):
+                    return LinkedInstanceLiteral(self.instantiate(path, impl, new_captures, []))
+                else:
+                    return LinkedImplementationLiteral(impl, new_captures)
             case LinkedDefinitionLiteral() | LinkedInstanceLiteral():
                 return lit
             case _:
