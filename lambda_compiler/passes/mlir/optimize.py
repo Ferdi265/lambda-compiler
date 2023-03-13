@@ -105,10 +105,9 @@ class OptimizeContext:
             case ReturnImplementation() as impl:
                 return False
             case TailCallImplementation() as impl:
-                return self.can_optimize_literal(impl.fn) and self.can_optimize_literal(impl.arg)
+                return self.can_optimize_literal(impl.fn)
             case ContinueCallImplementation() as impl:
-                # next does not need to be optimized
-                return self.can_optimize_literal(impl.fn) and self.can_optimize_literal(impl.arg)
+                return self.can_optimize_literal(impl.fn)
             case _:
                 raise OptimizeMLIRError(f"unexpected AST node encountered: {impl}")
 
@@ -165,16 +164,26 @@ class OptimizeContext:
                 self.dedup.replace_new_impl(impl, impl)
                 return impl
             elif isinstance(fn.impl, TailCallImplementation):
-                # TODO: optimizable into two implementations
+                # NOTE: optimizable only by prepending the fn impl to ours
+                # NOTE: might increase binary size a little if unlucky
                 #   impl b!0!0 = bar baz;
                 #   inst a%0 = b!0!0[];
                 #   impl a!0!0 = a%0 foo -> bar;
                 # becomes
                 #   impl a!0!0 = bar baz -> a!0!1;
                 #   impl a!0!1 = $0 foo -> bar;
-                # TODO: would need renumber of impls / new, free, impl number
                 raise OptimizeCannotEvaluateError()
             else:
+                # NOTE: optimizable only by prepending the fn impl chain to ours
+                # NOTE: very likely increases binary size by a lot
+                #   impl b!0!0 = bar baz -> b!0!1
+                #   impl b!0!1 = qux qax
+                #   inst a%0 = b!0!0[];
+                #   impl a!0!0 = a%0 foo -> bar;
+                # becomes
+                #   impl a!0!0 = bar baz -> a!0!1
+                #   impl a!0!1 = qux qax -> a!0!2
+                #   impl a!0!2 = $0 foo -> bar
                 raise OptimizeCannotEvaluateError()
         elif isinstance(impl, TailCallImplementation):
             new_impl = ReturnImplementation(*impl_metadata, LinkedInstanceLiteral(res))
