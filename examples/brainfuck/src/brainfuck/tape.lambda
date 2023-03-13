@@ -1,0 +1,50 @@
+use std::*;
+use super::util::*;
+use super::objects::*;
+
+pub move_left = selector !0 !4;
+pub move_right = selector !1 !4;
+pub get_val = selector !2 !4;
+pub set_val = selector !3 !4;
+
+make_this = methods -> cur -> left -> right -> make_object methods (pair cur (pair left right));
+get_cur = priv -> 1st priv;
+get_left = priv -> 1st (2nd priv);
+get_right = priv -> 2nd (2nd priv);
+
+# layout: (cur (left right))
+tape_methods = (list_n !4
+    # move_left
+    (this -> methods -> priv ->
+        set (get_cur priv) cur ->
+        set (get_left priv) left ->
+        set (get_right priv) right ->
+            make_this methods
+                (empty left !0 (first left))
+                (empty left nil (rest left))
+                (prepend cur right)
+    )
+    # move_right
+    (this -> methods -> priv ->
+        set (get_cur priv) cur ->
+        set (get_left priv) left ->
+        set (get_right priv) right ->
+            make_this methods
+                (empty right !0 (first right))
+                (prepend cur left)
+                (empty right nil (rest right))
+    )
+    # get
+    (this -> methods -> priv -> get_cur priv)
+    # set
+    (this -> methods -> priv -> new ->
+        set (get_left priv) left ->
+        set (get_right priv) right ->
+            make_this methods new left right
+    )
+);
+
+pub new = list -> make_this tape_methods
+    (empty list !0 (first list))
+    nil
+    (empty list nil (rest list));

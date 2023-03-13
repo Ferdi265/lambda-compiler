@@ -1,0 +1,38 @@
+use std::*;
+
+pub if = cond -> (y if -> val -> comp -> comp if cond val) ident;
+pub then = if -> cond -> val -> fn -> if (cond fn ident val);
+pub else = if -> cond -> val -> fn -> if (cond ident fn val);
+pub fi = if -> cond -> val -> val;
+
+pub switch = arg -> (y switch -> val -> comp -> comp switch arg val) (pair false ident);
+pub case = switch -> arg -> val -> arg2 -> fn -> switch (
+    (equal arg arg2)
+        (_ -> pair true (fn (2nd val)))
+        (_ -> val)
+    ident
+);
+pub default = switch -> arg -> val -> fn -> switch (
+    (1st val)
+        (_ -> val)
+        (_ -> pair true (fn (2nd val)))
+    ident
+);
+pub esac = switch -> arg -> val -> 2nd val;
+
+pub set = val -> f -> f val;
+pub do = _ -> ident;
+
+pub nat2str = n ->
+    iszero n
+        (x -> !"0")
+        (x -> reverse ((y nat2str -> n ->
+            iszero n
+                (x -> nil)
+                (x -> prepend
+                    (add !48 (rem n !10))
+                    (nat2str (div n !10))
+                )
+            ident
+        ) n))
+    ident;

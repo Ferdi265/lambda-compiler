@@ -1,0 +1,13 @@
+extern crate std;
+extern crate io;
+use std::*;
+use io::*;
+
+mod util;
+mod objects;
+mod tape;
+mod interpret;
+use self::tape::new as tape_new;
+use self::interpret::*;
+
+pub impure main = _ -> run EXECUTE !0 (tape_new (gets ident)) (tape_new nil);
