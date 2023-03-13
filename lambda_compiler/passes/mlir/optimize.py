@@ -154,12 +154,26 @@ class OptimizeContext:
             pass
 
         if res is None:
+            captures = [arg]
+            captures += fn.captures
             if isinstance(impl, TailCallImplementation):
-                captures = [arg]
-                captures += fn.captures
                 new_impl = self.optimize_substitute_impl(impl, fn.impl, captures)
                 self.dedup.replace_new_impl(new_impl, impl)
                 return new_impl
+            elif isinstance(fn.impl, ReturnImplementation):
+                impl.fn = self.optimize_literal(path, fn.impl.value, captures)
+                self.dedup.replace_new_impl(impl, impl)
+                return impl
+            elif isinstance(fn.impl, TailCallImplementation):
+                # TODO: optimizable into two implementations
+                #   impl b!0!0 = bar baz;
+                #   inst a%0 = b!0!0[];
+                #   impl a!0!0 = a%0 foo -> bar;
+                # becomes
+                #   impl a!0!0 = bar baz -> a!0!1;
+                #   impl a!0!1 = $0 foo -> bar;
+                # TODO: would need renumber of impls / new, free, impl number
+                raise OptimizeCannotEvaluateError()
             else:
                 raise OptimizeCannotEvaluateError()
         elif isinstance(impl, TailCallImplementation):
