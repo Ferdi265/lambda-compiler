@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from ...ast.mlir_linked import *
 from .dedup import DedupMLIRContext
 
-class OptimizeNotYetSeenError(Exception):
+class OptimizeCannotEvaluateError(Exception):
     pass
 
 class OptimizeMLIRError(Exception):
@@ -35,15 +35,23 @@ class OptimizeContext:
             return
 
         try:
-            inst = self.evaluate_stack(defi.path, defi.inst.impl)
+            inst = self.evaluate_impl_stack(defi.path, defi.inst.impl)
             defi.inst = inst
             defi.needs_init = False
-        except OptimizeNotYetSeenError:
+        except OptimizeCannotEvaluateError:
             pass
 
-    def evaluate_stack(self, path: Path, impl: Implementation) -> LinkedInstance:
+    def evaluate_impl_stack(self, path: Path, impl: Implementation) -> LinkedInstance:
         stack: List[LinkedInstance] = []
         fn, arg = self.evaluate_impl(path, impl, [], stack)
+        if fn is None:
+            return arg
+        else:
+            return self.evaluate_inst_stack(path, fn, arg)
+
+    def evaluate_inst_stack(self, path: Path, initial_fn: LinkedInstance, arg: LinkedInstance) -> LinkedInstance:
+        stack: List[LinkedInstance] = []
+        fn: Optional[LinkedInstance] = initial_fn
         while fn is not None or len(stack) > 0:
             if fn is None:
                 fn = stack.pop()
@@ -76,13 +84,100 @@ class OptimizeContext:
             case CaptureLiteral(id):
                 return captures[id]
             case ExternLiteral(name):
-                raise OptimizeNotYetSeenError()
+                raise OptimizeCannotEvaluateError()
             case LinkedDefinitionLiteral(defi):
                 return defi.inst
             case LinkedInstanceLiteral(inst):
                 return inst
             case LinkedImplementationLiteral(impl, impl_captures):
                 return self.instantiate(path, impl, impl_captures, captures)
+            case _:
+                raise OptimizeMLIRError(f"unexpected AST node encountered: {lit}")
+
+    def can_optimize_impl(self, impl: Implementation) -> bool:
+        match impl:
+            case ReturnImplementation() as impl:
+                return False
+            case TailCallImplementation() as impl:
+                return self.can_optimize_literal(impl.fn) and self.can_optimize_literal(impl.arg)
+            case ContinueCallImplementation() as impl:
+                # next does not need to be optimized
+                return self.can_optimize_literal(impl.fn) and self.can_optimize_literal(impl.arg)
+            case _:
+                raise OptimizeMLIRError(f"unexpected AST node encountered: {impl}")
+
+    def can_optimize_literal(self, lit: ValueLiteral) -> bool:
+        match lit:
+            case CaptureLiteral() | ExternLiteral():
+                return False
+            case LinkedDefinitionLiteral() | LinkedInstanceLiteral():
+                return True
+            case LinkedImplementationLiteral(impl, impl_captures):
+                for cap in impl_captures:
+                    if isinstance(cap, int):
+                        return False
+                return True
+            case _:
+                raise OptimizeMLIRError(f"unexpected AST node encountered: {lit}")
+
+    def optimize_impl(self, impl: Implementation) -> Implementation:
+        assert isinstance(impl, TailCallImplementation) or isinstance(impl, ContinueCallImplementation)
+        path = impl.path.path
+        fn = self.evaluate_literal(path, impl.fn, [])
+        arg = self.evaluate_literal(path, impl.arg, [])
+        res = self.evaluate_inst_stack(path, fn, arg)
+
+        new_impl: Implementation
+        impl_metadata: Tuple[ImplementationPath, int] = (impl.path, impl.captures)
+        if isinstance(impl, TailCallImplementation):
+            new_impl = ReturnImplementation(*impl_metadata, LinkedInstanceLiteral(res))
+            self.dedup.replace_new_impl(new_impl, impl)
+            return new_impl
+        elif not isinstance(impl.next, LinkedImplementationLiteral):
+            new_impl = TailCallImplementation(*impl_metadata, impl.next, LinkedInstanceLiteral(res))
+            self.dedup.replace_new_impl(new_impl, impl)
+            return new_impl
+        else:
+            captures: List[int | LinkedInstance] = [res]
+            captures += impl.next.captures
+
+            next_impl = impl.next.impl
+            match next_impl:
+                case ReturnImplementation():
+                    new_impl = ReturnImplementation(*impl_metadata,
+                        self.optimize_literal(next_impl.value, captures)
+                    )
+                case TailCallImplementation():
+                    new_impl = TailCallImplementation(*impl_metadata,
+                        self.optimize_literal(next_impl.fn, captures),
+                        self.optimize_literal(next_impl.arg, captures)
+                    )
+                case ContinueCallImplementation():
+                    new_impl = ContinueCallImplementation(*impl_metadata,
+                        self.optimize_literal(next_impl.fn, captures),
+                        self.optimize_literal(next_impl.arg, captures),
+                        self.optimize_literal(next_impl.next, captures),
+                    )
+            self.dedup.replace_new_impl(new_impl, impl)
+            return new_impl
+
+    def optimize_literal(self, lit: ValueLiteral, captures: List[int | LinkedInstance]) -> ValueLiteral:
+        match lit:
+            case CaptureLiteral(id):
+                match captures[id]:
+                    case LinkedInstance() as inst:
+                        return LinkedInstanceLiteral(inst)
+                    case int() as i:
+                        return CaptureLiteral(i)
+                    case other:
+                        raise OptimizeMLIRError(f"unexpected AST node encountered: {other}")
+            case LinkedImplementationLiteral(impl, impl_captures):
+                return LinkedImplementationLiteral(
+                    impl,
+                    [captures[cap] if isinstance(cap, int) else cap for cap in impl_captures]
+                )
+            case LinkedDefinitionLiteral() | LinkedInstanceLiteral():
+                return lit
             case _:
                 raise OptimizeMLIRError(f"unexpected AST node encountered: {lit}")
 
@@ -94,35 +189,27 @@ def optimize_mlir(prog: List[Statement], opt_deps: Optional[List[Statement]] = N
         ctx = OptimizeContext(dedup)
 
         for stmt in deps + prog:
-            visit_statement_find_impls(stmt, ctx)
+            if isinstance(stmt, LinkedInstance):
+                ctx.bump_inst_id(stmt.path)
 
         for stmt in prog:
-            visit_statement_instantiate(stmt, ctx)
+            visit_statement(stmt, ctx)
 
         ctx.dedup.deduplicate(ctx.dedup.collect())
         return ctx.dedup.tree_shake(deps)
 
-    def visit_statement_find_impls(stmt: Statement, ctx: OptimizeContext):
-        match stmt:
-            case ExternCrate() | Extern() | LinkedDefinition() | Implementation():
-                pass
-            case LinkedInstance() as inst:
-                ctx.bump_inst_id(inst.path)
-            case _:
-                raise OptimizeMLIRError(f"unexpected AST node encountered: {stmt}")
-
-    def visit_statement_instantiate(stmt: Statement, ctx: OptimizeContext):
+    def visit_statement(stmt: Statement, ctx: OptimizeContext):
         match stmt:
             case ExternCrate() | Extern() | LinkedInstance():
                 pass
             case LinkedDefinition() as defi:
                 ctx.evaluate_definition(defi)
             case Implementation() as impl:
-                visit_implementation_instantiate(impl, ctx)
+                visit_implementation(impl, ctx)
             case _:
                 raise OptimizeMLIRError(f"unexpected AST node encountered: {stmt}")
 
-    def visit_implementation_instantiate(impl: Implementation, ctx: OptimizeContext):
+    def visit_implementation(impl: Implementation, ctx: OptimizeContext):
         match impl:
             case ReturnImplementation() as impl:
                 impl.value = visit_literal(impl.path.path, impl.value, ctx)
@@ -138,6 +225,15 @@ def optimize_mlir(prog: List[Statement], opt_deps: Optional[List[Statement]] = N
 
         if impl.captures == 0:
             ctx.instantiate(impl.path.path, impl, [], [])
+
+        impl, _ = ctx.dedup.dedup_impl(impl)
+
+        try:
+            while ctx.can_optimize_impl(impl):
+                impl = ctx.optimize_impl(impl)
+        except OptimizeCannotEvaluateError:
+            # evaluation ran into an extern
+            pass
 
     def visit_literal(path: Path, lit: ValueLiteral, ctx: OptimizeContext) -> ValueLiteral:
         match lit:

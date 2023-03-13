@@ -172,10 +172,22 @@ class DedupMLIRContext:
     def dedup_new_inst(self, inst: LinkedInstance) -> LinkedInstance:
         hash_value = self.hash_inst(inst)
         if hash_value is None:
-            raise DedupMLIRError("cannot deduplicate new instance, captures unknown")
+            raise DedupMLIRError(f"cannot deduplicate new instance, captures unknown: {inst}")
 
         self.insert_inst(inst, hash_value)
         return self.inst_dedup[hash_value]
+
+    def replace_new_impl(self, new_impl: Implementation, old_impl: Implementation) -> Implementation:
+        hash_value = self.hash_impl(new_impl)
+        if hash_value is None:
+            raise DedupMLIRError(f"cannot replace impl, references unknown: {new_impl}")
+
+        self.insert_impl(new_impl, hash_value)
+
+        old_hash_value = self.impl_hash[old_impl.path]
+        self.impl_hash[old_impl.path] = hash_value
+        self.impl_dedup[old_hash_value] = new_impl
+        return new_impl
 
     @staticmethod
     def build(prog: List[Statement]) -> DedupMLIRContext:
@@ -203,6 +215,7 @@ class DedupMLIRContext:
             if defi in prog:
                 return
 
+            defi.inst, _ = self.dedup_inst(defi.inst)
             visit_inst(defi.inst)
 
             prog.append(defi)
@@ -213,14 +226,19 @@ class DedupMLIRContext:
             if inst in prog:
                 return
 
+            inst.impl, _ = self.dedup_impl(inst.impl)
             visit_impl(inst.impl)
 
-            for capture in inst.captures:
+            for i, capture in enumerate(inst.captures):
+                capture, _ = self.dedup_inst(capture)
+                inst.captures[i] = capture
                 visit_inst(capture)
 
             prog.append(inst)
 
         def visit_impl(impl: Implementation):
+            impl, _ = self.dedup_impl(impl)
+
             if impl in deps:
                 return
             if impl in prog:
@@ -246,11 +264,17 @@ class DedupMLIRContext:
                 case LinkedDefinitionLiteral(defi):
                     visit_def(defi)
                 case LinkedInstanceLiteral(inst):
+                    inst, _ = self.dedup_inst(inst)
+                    lit.inst = inst
                     visit_inst(inst)
                 case LinkedImplementationLiteral(impl, captures):
+                    impl, _ = self.dedup_impl(impl)
+                    lit.impl = impl
                     visit_impl(impl)
-                    for cap in captures:
+                    for i, cap in enumerate(captures):
                         if isinstance(cap, LinkedInstance):
+                            cap, _ = self.dedup_inst(cap)
+                            captures[i] = cap
                             visit_inst(cap)
 
         for crate in self.extern_crates:
