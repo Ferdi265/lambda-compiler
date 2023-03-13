@@ -105,13 +105,13 @@ class ModuleNamespace:
 
     def get_entry(self, name: str) -> NamespaceEntry:
         if name not in self.entries:
-            raise ResolveCrateError(f"'{self.path}::{name}' is undefined")
+            raise ResolveCrateError(f"'{self.path}::{name}' is undefined in {self.file.src}")
 
         return self.entries[name]
 
     def insert_entry(self, name: str, entry: NamespaceEntry):
         if name in self.entries:
-            raise ResolveCrateError(f"redefinition of '{self.path}::{name}'")
+            raise ResolveCrateError(f"redefinition of '{self.path}::{name}' in {self.file.src}")
 
         self.entries[name] = entry
 

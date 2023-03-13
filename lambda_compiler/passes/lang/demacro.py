@@ -22,6 +22,15 @@ def demacro_string(string: String) -> Expr:
     list_n = Relative(list_n_path(len(char_exprs)))
     return Paren(build_call_chain(cast(List[Expr], [list_n, len_expr] + char_exprs)))
 
+def demacro_char(char: Char) -> Expr:
+    """
+    convert char literals into calls to std::dec2/3
+    """
+
+    c = char.content.encode()
+    assert len(c) == 1
+    return demacro_number(Number(c[0]))
+
 def demacro_number(number: Number) -> Expr:
     """
     convert number literals into calls to std::dec2/3
@@ -73,6 +82,8 @@ def demacro(prog: List[Statement]) -> List[Statement]:
         match macro:
             case String() as string:
                 return demacro_string(string)
+            case Char() as char:
+                return demacro_char(char)
             case Number() as number:
                 return demacro_number(number)
             case _:

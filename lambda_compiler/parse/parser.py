@@ -31,6 +31,7 @@ class Token(Enum):
     Impl = auto()
     Inst = auto()
     String = auto()
+    Char = auto()
     Ident = auto()
     End = auto()
 
@@ -65,6 +66,7 @@ patterns: List[Tuple[str, Optional[Token]]] = [
     ("impl(?=[^a-zA-Z0-9])", Token.Impl),
     ("inst(?=[^a-zA-Z0-9])", Token.Inst),
     (r'"([^"\\]|\\[^\n])*"', Token.String),
+    (r"'([^'\\]|\\[^\n])'", Token.Char),
     ("[a-zA-Z_0-9]+", Token.Ident),
 ]
 

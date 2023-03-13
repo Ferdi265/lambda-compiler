@@ -29,6 +29,11 @@ def parse_lang(code: str, file: str) -> List[Statement]:
         s = pyast.literal_eval(s)
         return String(s)
 
+    def parse_char() -> Char:
+        s = p.eat(Token.Char)
+        s = pyast.literal_eval(s)
+        return Char(s)
+
     def parse_num() -> Number:
         return Number(p.parse_number())
 
@@ -37,6 +42,8 @@ def parse_lang(code: str, file: str) -> List[Statement]:
 
         if p.token == Token.String:
             return parse_string()
+        if p.token == Token.Char:
+            return parse_char()
         elif p.token == Token.Ident and p.is_number():
             return parse_num()
         p.err()

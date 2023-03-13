@@ -73,5 +73,9 @@ class String(Macro):
     content: str
 
 @dataclass
+class Char(Macro):
+    content: str
+
+@dataclass
 class Number(Macro):
     value: int
