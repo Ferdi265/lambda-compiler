@@ -125,11 +125,26 @@ class OptimizeContext:
         path = impl.path.path
         fn = self.evaluate_literal(path, impl.fn, [])
         arg = self.evaluate_literal(path, impl.arg, [])
-        res = self.evaluate_inst_stack(path, fn, arg)
+
+        res: Optional[LinkedInstance] = None
+        try:
+            res = self.evaluate_inst_stack(path, fn, arg)
+        except OptimizeCannotEvaluateError:
+            pass
 
         new_impl: Implementation
+        captures: List[int | LinkedInstance]
         impl_metadata: Tuple[ImplementationPath, int] = (impl.path, impl.captures)
-        if isinstance(impl, TailCallImplementation):
+        if res is None:
+            if isinstance(impl, TailCallImplementation):
+                captures = [arg]
+                captures += fn.captures
+                new_impl = self.optimize_substitute_impl(impl, fn.impl, captures)
+                self.dedup.replace_new_impl(new_impl, impl)
+                return new_impl
+            else:
+                raise OptimizeCannotEvaluateError()
+        elif isinstance(impl, TailCallImplementation):
             new_impl = ReturnImplementation(*impl_metadata, LinkedInstanceLiteral(res))
             self.dedup.replace_new_impl(new_impl, impl)
             return new_impl
@@ -138,28 +153,32 @@ class OptimizeContext:
             self.dedup.replace_new_impl(new_impl, impl)
             return new_impl
         else:
-            captures: List[int | LinkedInstance] = [res]
+            captures = [res]
             captures += impl.next.captures
-
-            next_impl = impl.next.impl
-            match next_impl:
-                case ReturnImplementation():
-                    new_impl = ReturnImplementation(*impl_metadata,
-                        self.optimize_literal(next_impl.value, captures)
-                    )
-                case TailCallImplementation():
-                    new_impl = TailCallImplementation(*impl_metadata,
-                        self.optimize_literal(next_impl.fn, captures),
-                        self.optimize_literal(next_impl.arg, captures)
-                    )
-                case ContinueCallImplementation():
-                    new_impl = ContinueCallImplementation(*impl_metadata,
-                        self.optimize_literal(next_impl.fn, captures),
-                        self.optimize_literal(next_impl.arg, captures),
-                        self.optimize_literal(next_impl.next, captures),
-                    )
+            new_impl = self.optimize_substitute_impl(impl, impl.next.impl, captures)
             self.dedup.replace_new_impl(new_impl, impl)
             return new_impl
+
+    def optimize_substitute_impl(self, old_impl: Implementation, impl: Implementation, captures: List[int | LinkedInstance]) -> Implementation:
+        impl_metadata: Tuple[ImplementationPath, int] = (old_impl.path, old_impl.captures)
+        match impl:
+            case ReturnImplementation():
+                return ReturnImplementation(*impl_metadata,
+                    self.optimize_literal(impl.value, captures)
+                )
+            case TailCallImplementation():
+                return TailCallImplementation(*impl_metadata,
+                    self.optimize_literal(impl.fn, captures),
+                    self.optimize_literal(impl.arg, captures)
+                )
+            case ContinueCallImplementation():
+                return ContinueCallImplementation(*impl_metadata,
+                    self.optimize_literal(impl.fn, captures),
+                    self.optimize_literal(impl.arg, captures),
+                    self.optimize_literal(impl.next, captures),
+                )
+            case _:
+                raise OptimizeMLIRError(f"unexpected AST node encountered: {impl}")
 
     def optimize_literal(self, lit: ValueLiteral, captures: List[int | LinkedInstance]) -> ValueLiteral:
         match lit:
