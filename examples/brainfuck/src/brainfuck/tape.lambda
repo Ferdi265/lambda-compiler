@@ -15,7 +15,7 @@ get_right = priv -> 2nd (2nd priv);
 # layout: (cur (left right))
 tape_methods = (list_n !4
     # move_left
-    (this -> methods -> priv ->
+    (methods -> priv ->
         set (get_cur priv) cur ->
         set (get_left priv) left ->
         set (get_right priv) right ->
@@ -25,7 +25,7 @@ tape_methods = (list_n !4
                 (prepend cur right)
     )
     # move_right
-    (this -> methods -> priv ->
+    (methods -> priv ->
         set (get_cur priv) cur ->
         set (get_left priv) left ->
         set (get_right priv) right ->
@@ -35,9 +35,9 @@ tape_methods = (list_n !4
                 (empty right nil (rest right))
     )
     # get
-    (this -> methods -> priv -> get_cur priv)
+    (methods -> priv -> get_cur priv)
     # set
-    (this -> methods -> priv -> new ->
+    (methods -> priv -> new ->
         set (get_left priv) left ->
         set (get_right priv) right ->
             make_this methods new left right

@@ -6,7 +6,7 @@ unpack = f -> list ->
 pub make_object = methods -> private ->
     y (this -> method_selector ->
         unpack method_selector methods
-            this methods private
+            methods private
     );
 
 ignore = ignored -> value ->
