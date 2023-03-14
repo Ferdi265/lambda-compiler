@@ -23,61 +23,45 @@ RECURSE = interpret -> next_state ->
 pub impure run = y interpret -> state -> nestcount -> code -> data -> (
     set (code get_val) op ->
     set (data get_val) val ->
-    #do (puts !"interpret: op = '")
-    #do (putc op)
-    #do (puts !"', val = ")
-    #do (puts (nat2str val))
-    #do (puts !" | ")
     set (switch state
         case EXECUTE (_ ->
             set (code move_right) code ->
             switch op
                 case !0 (_ ->
-                    #do (puts !"terminate\n")
                     TERMINATE
                 )
                 case !'>' (_ ->
-                    #do (puts !"right\n")
                     set (data move_right) data ->
                     NEXT_STATE state nestcount code data
                 )
                 case !'<' (_ ->
-                    #do (puts !"left\n")
                     set (data move_left) data ->
                     NEXT_STATE state nestcount code data
                 )
                 case !'+' (_ ->
-                    #do (puts !"add\n")
                     set (data set_val (rem (add val !1) !256)) data ->
                     NEXT_STATE state nestcount code data
                 )
                 case !'-' (_ ->
-                    #do (puts !"sub\n")
                     set (data set_val (rem (add val !255) !256)) data ->
                     NEXT_STATE state nestcount code data
                 )
                 case !'.' (_ ->
-                    #do (puts !"out ")
-                    #do (puts (nat2str val))
-                    #do (puts !"\n")
                     do (putc val)
                     NEXT_STATE state nestcount code data
                 )
                 case !',' (_ ->
-                    #do (puts !"in\n")
                     set (data set_val (io::getc ident)) data ->
                     NEXT_STATE state nestcount code data
                 )
                 case !'[' (_ ->
                     if (iszero val)
                         then (_ ->
-                            #do (puts !"loop skip\n")
                             set SKIP state ->
                             set !0 nestcount ->
                             NEXT_STATE state nestcount code data
                         )
                         else (_ ->
-                            #do (puts !"loop enter\n")
                             NEXT_STATE state nestcount code data
                         )
                     fi
@@ -85,11 +69,9 @@ pub impure run = y interpret -> state -> nestcount -> code -> data -> (
                 case !']' (_ ->
                     if (iszero val)
                         then (_ ->
-                            #do (puts !"loop finish\n")
                             NEXT_STATE state nestcount code data
                         )
                         else (_ ->
-                            #do (puts !"loop rewind\n")
                             set (code move_left) code ->
                             set (code move_left) code ->
                             set RSKIP state ->
@@ -99,7 +81,6 @@ pub impure run = y interpret -> state -> nestcount -> code -> data -> (
                     fi
                 )
                 default (_ ->
-                    #do (puts !"comment\n")
                     NEXT_STATE state nestcount code data
                 )
             esac
@@ -107,39 +88,24 @@ pub impure run = y interpret -> state -> nestcount -> code -> data -> (
         case SKIP (_ ->
             set (code move_right) code ->
             switch op
-                case !0 (_ ->
-                    do (puts !"skip unterminated loop\n")
-                    TERMINATE
-                )
+                case !0 (_ -> TERMINATE)
                 case !'[' (_ ->
-                    #do (puts !"skip nestcount ")
-                    #do (puts (nat2str nestcount))
-                    #do (puts !" -> ")
-                    #do (puts (nat2str (succ nestcount)))
-                    #do (puts !"\n")
                     set (succ nestcount) nestcount ->
                     NEXT_STATE state nestcount code data
                 )
                 case !']' (_ ->
                     if (iszero nestcount)
                         then (_ ->
-                            #do (puts !"skip end\n")
                             set EXECUTE state ->
                             NEXT_STATE state nestcount code data
                         )
                         else (_ ->
-                            #do (puts !"skip nestcount ")
-                            #do (puts (nat2str nestcount))
-                            #do (puts !" -> ")
-                            #do (puts (nat2str (pred nestcount)))
-                            #do (puts !"\n")
                             set (pred nestcount) nestcount ->
                             NEXT_STATE state nestcount code data
                         )
                     fi
                 )
                 default (_ ->
-                    #do (puts !"skip\n")
                     NEXT_STATE state nestcount code data
                 )
             esac
@@ -147,49 +113,30 @@ pub impure run = y interpret -> state -> nestcount -> code -> data -> (
         case RSKIP (_ ->
             set (code move_left) code ->
             switch op
-                case !0 (_ ->
-                    do (puts !"rskip unterminated loop\n")
-                    TERMINATE
-                )
+                case !0 (_ -> TERMINATE)
                 case !'[' (_ ->
                     if (iszero nestcount)
                         then (_ ->
-                            #do (puts !"rskip end\n")
                             set (code move_right) code ->
                             set EXECUTE state ->
                             NEXT_STATE state nestcount code data
                         )
                         else (_ ->
-                            #do (puts !"rskip nestcount ")
-                            #do (puts (nat2str nestcount))
-                            #do (puts !" -> ")
-                            #do (puts (nat2str (pred nestcount)))
-                            #do (puts !"\n")
                             set (pred nestcount) nestcount ->
                             NEXT_STATE state nestcount code data
                         )
                     fi
                 )
                 case !']' (_ ->
-                    #do (puts !"rskip nestcount ")
-                    #do (puts (nat2str nestcount))
-                    #do (puts !" -> ")
-                    #do (puts (nat2str (succ nestcount)))
-                    #do (puts !"\n")
                     set (succ nestcount) nestcount ->
                     NEXT_STATE state nestcount code data
                 )
                 default (_ ->
-                    #do (puts !"rskip\n")
                     NEXT_STATE state nestcount code data
                 )
             esac
         )
-        default (_ ->
-            do (puts !"invalid state\n")
-            TERMINATE
-        )
+        default (_ -> TERMINATE)
     esac) next_state ->
-    #do (trap next_state)
     RECURSE interpret next_state
 );
