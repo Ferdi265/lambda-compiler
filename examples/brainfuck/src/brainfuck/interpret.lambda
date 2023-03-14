@@ -8,15 +8,10 @@ pub SKIP = 1;
 pub RSKIP = 2;
 
 TERMINATE = pair false ident;
-NEXT_STATE = state -> nestcount -> code -> data -> pair true (pair (pair state nestcount) (pair code data));
+NEXT_STATE = state -> nestcount -> code -> data -> pair true interpret -> interpret state nestcount code data;
 RECURSE = interpret -> next_state ->
     1st next_state
-        (_ -> interpret
-            (1st (1st (2nd next_state)))
-            (2nd (1st (2nd next_state)))
-            (1st (2nd (2nd next_state)))
-            (2nd (2nd (2nd next_state)))
-        )
+        (_ -> 2nd next_state interpret)
         (_ -> ident)
     ident;
 
