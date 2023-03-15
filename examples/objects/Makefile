@@ -29,7 +29,7 @@ clean:
 build:
 	mkdir -p $@
 
-build/%.hlir:
+build/%.hlir: src/%.lambda
 	lambda-lang2hlir -P build/ -o $@ $<
 
 build/%.hlis: build/%.hlir
