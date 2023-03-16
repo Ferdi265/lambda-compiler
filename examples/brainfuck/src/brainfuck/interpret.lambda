@@ -3,9 +3,9 @@ use io::*;
 use super::util::*;
 use super::tape::*;
 
-pub EXECUTE = 0;
-pub SKIP = 1;
-pub RSKIP = 2;
+pub EXECUTE = !0;
+pub SKIP = !1;
+pub RSKIP = !2;
 
 pub impure run = y interpret -> state -> nestcount -> code -> data -> (
     set (code get_val) op ->
@@ -17,56 +17,52 @@ pub impure run = y interpret -> state -> nestcount -> code -> data -> (
                 case !0 (_ -> ident)
                 case !'>' (_ ->
                     set (data move_right) data ->
-                    interpret state nestcount code data
+                    interpret EXECUTE !0 code data
                 )
                 case !'<' (_ ->
                     set (data move_left) data ->
-                    interpret state nestcount code data
+                    interpret EXECUTE !0 code data
                 )
                 case !'+' (_ ->
                     set (data set_val (rem (add val !1) !256)) data ->
-                    interpret state nestcount code data
+                    interpret EXECUTE !0 code data
                 )
                 case !'-' (_ ->
                     set (data set_val (rem (add val !255) !256)) data ->
-                    interpret state nestcount code data
+                    interpret EXECUTE !0 code data
                 )
                 case !'.' (_ ->
                     do (putc val)
-                    interpret state nestcount code data
+                    interpret EXECUTE !0 code data
                 )
                 case !',' (_ ->
                     set (data set_val (io::getc ident)) data ->
-                    interpret state nestcount code data
+                    interpret EXECUTE !0 code data
                 )
                 case !'[' (_ ->
                     if (iszero val)
                         then (_ ->
-                            set SKIP state ->
-                            set !0 nestcount ->
-                            interpret state nestcount code data
+                            interpret SKIP !0 code data
                         )
                         else (_ ->
-                            interpret state nestcount code data
+                            interpret EXECUTE !0 code data
                         )
                     fi
                 )
                 case !']' (_ ->
                     if (iszero val)
                         then (_ ->
-                            interpret state nestcount code data
+                            interpret EXECUTE !0 code data
                         )
                         else (_ ->
                             set (code move_left) code ->
                             set (code move_left) code ->
-                            set RSKIP state ->
-                            set !0 nestcount ->
-                            interpret state nestcount code data
+                            interpret RSKIP !0 code data
                         )
                     fi
                 )
                 default (_ ->
-                    interpret state nestcount code data
+                    interpret EXECUTE !0 code data
                 )
             esac
         )
@@ -76,22 +72,21 @@ pub impure run = y interpret -> state -> nestcount -> code -> data -> (
                 case !0 (_ -> ident)
                 case !'[' (_ ->
                     set (succ nestcount) nestcount ->
-                    interpret state nestcount code data
+                    interpret SKIP nestcount code data
                 )
                 case !']' (_ ->
                     if (iszero nestcount)
                         then (_ ->
-                            set EXECUTE state ->
-                            interpret state nestcount code data
+                            interpret EXECUTE !0 code data
                         )
                         else (_ ->
                             set (pred nestcount) nestcount ->
-                            interpret state nestcount code data
+                            interpret SKIP nestcount code data
                         )
                     fi
                 )
                 default (_ ->
-                    interpret state nestcount code data
+                    interpret SKIP nestcount code data
                 )
             esac
         )
@@ -103,21 +98,20 @@ pub impure run = y interpret -> state -> nestcount -> code -> data -> (
                     if (iszero nestcount)
                         then (_ ->
                             set (code move_right) code ->
-                            set EXECUTE state ->
-                            interpret state nestcount code data
+                            interpret EXECUTE !0 code data
                         )
                         else (_ ->
                             set (pred nestcount) nestcount ->
-                            interpret state nestcount code data
+                            interpret RSKIP nestcount code data
                         )
                     fi
                 )
                 case !']' (_ ->
                     set (succ nestcount) nestcount ->
-                    interpret state nestcount code data
+                    interpret RSKIP nestcount code data
                 )
                 default (_ ->
-                    interpret state nestcount code data
+                    interpret RSKIP nestcount code data
                 )
             esac
         )
