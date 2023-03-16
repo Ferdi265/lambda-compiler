@@ -1,27 +1,20 @@
 use std::*;
 
-pub if = cond -> (y if -> val -> comp -> comp if cond val) ident;
-pub then = if -> cond -> val -> fn -> if (cond fn ident val);
-pub else = if -> cond -> val -> fn -> if (cond ident fn val);
-pub fi = if -> cond -> val -> val;
-
-pub switch = arg -> (y switch -> val -> comp -> comp switch arg val) (pair false ident);
-pub case = switch -> arg -> val -> arg2 -> fn -> switch (
-    (equal arg arg2)
-        (_ -> pair true (fn (2nd val)))
-        (_ -> val)
-    ident
-);
-pub default = switch -> arg -> val -> fn -> switch (
-    (1st val)
-        (_ -> val)
-        (_ -> pair true (fn (2nd val)))
-    ident
-);
-pub esac = switch -> arg -> val -> 2nd val;
-
 pub set = val -> f -> f val;
 pub do = _ -> ident;
+
+pub if = cond -> (y if -> fn -> comp -> comp if cond fn) ident;
+pub then = if -> cond -> oldfn -> fn -> if (cond fn oldfn);
+pub else = if -> cond -> oldfn -> fn -> if (cond oldfn fn);
+pub fi = if -> cond -> fn -> fn ident;
+
+pub switch = arg -> (y switch -> has -> fn -> comp -> comp switch arg has fn) false ident;
+pub case = switch -> arg -> has -> oldfn -> arg2 -> fn ->
+    set (has false (equal arg arg2)) cond ->
+    switch (cond true has) (cond fn oldfn)
+;
+pub default = switch -> arg -> has -> oldfn -> fn -> switch true (has oldfn fn);
+pub esac = switch -> arg -> has -> fn -> fn ident;
 
 pub nat2str = n ->
     iszero n
