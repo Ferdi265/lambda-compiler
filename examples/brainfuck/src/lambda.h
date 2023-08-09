@@ -15,7 +15,10 @@ struct lambda_header {
     size_t refcount;
     size_t len_captures;
     size_t len_userdata;
-    lambda_impl* impl;
+    union {
+        lambda_impl* impl;
+        lambda* tail;
+    };
 };
 
 // the lambda function object type
