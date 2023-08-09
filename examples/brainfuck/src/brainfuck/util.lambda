@@ -1,7 +1,7 @@
 use std::*;
 
 pub set = val -> f -> f val;
-pub do = _ -> ident;
+pub next = _ -> ident;
 
 pub if = cond -> (y if -> fn -> comp -> comp if cond fn) ident;
 pub then = if -> cond -> oldfn -> fn -> if (cond fn oldfn);

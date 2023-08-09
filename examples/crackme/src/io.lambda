@@ -7,6 +7,7 @@ extern impure lambda_io_pred;
 extern impure lambda_io_iszero;
 extern impure lambda_io_putc;
 extern impure lambda_io_getc;
+extern impure lambda_io_debug;
 
 impure nat2c = n -> count lambda_io_succ lambda_io_zero n;
 
@@ -38,3 +39,5 @@ pub impure gets = x -> reverse (pop_eof (while
     (l -> prepend (getc ident) l)
     (prepend (getc ident) nil)
 ));
+
+pub impure trap = lambda_io_debug;

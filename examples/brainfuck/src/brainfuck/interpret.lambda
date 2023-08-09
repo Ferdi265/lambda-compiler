@@ -43,7 +43,7 @@ pub impure run = y interpret -> state -> nestcount -> code -> data -> (
                     interpret EXECUTE !0 code data
                 )
                 case !'.' (_ ->
-                    do (putc val)
+                    next (putc val)
                     interpret EXECUTE !0 code data
                 )
                 case !',' (_ ->

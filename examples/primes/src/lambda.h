@@ -15,7 +15,10 @@ struct lambda_header {
     size_t refcount;
     size_t len_captures;
     size_t len_userdata;
-    lambda_impl* impl;
+    union {
+        lambda_impl* impl;
+        lambda* tail;
+    };
 };
 
 // the lambda function object type
@@ -37,7 +40,10 @@ struct lambda_cont {
 #define LAMBDA_USER_DESTRUCTOR 1
 
 // a mask macro that selects userdata without the bit flags
-#define LAMBDA_LEN_USERDATA(l) ((l)->len_userdata & ~LAMBDA_USER_DESTRUCTOR)
+#define LAMBDA_HAS_USER_DESTRUCTOR(l) ((l)->header.len_userdata & LAMBDA_USER_DESTRUCTOR)
+
+// a mask macro that selects userdata without the bit flags
+#define LAMBDA_LEN_USERDATA(l) ((l)->header.len_userdata & ~LAMBDA_USER_DESTRUCTOR)
 
 // create a statically allocated instance of a lambda
 #define LAMBDA_INSTANCE(_name, _impl, _len_captures, _len_userdata, ...) \

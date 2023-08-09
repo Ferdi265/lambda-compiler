@@ -60,14 +60,14 @@ void lambda_unref(lambda* l) {
         return;
     }
 
-    if (l->header.len_userdata & LAMBDA_USER_DESTRUCTOR) {
+    if (LAMBDA_HAS_USER_DESTRUCTOR(l)) {
         void* userdata = lambda_userdata(l);
         ((lambda_destructor*)userdata)(userdata);
     }
 
     lambda* tail = NULL;
     if (l->header.refcount == 0) {
-        tail = (lambda*) l->header.impl;
+        tail = l->header.tail;
     }
 
     for (size_t i = 0; i < l->header.len_captures; i++) {
@@ -79,7 +79,7 @@ void lambda_unref(lambda* l) {
 
         if (tail != NULL) {
             cur->header.refcount = 0;
-            cur->header.impl = (lambda_impl*) tail;
+            cur->header.tail = tail;
         }
 
         tail = cur;

@@ -196,3 +196,22 @@ LAMBDA_INSTANCE(lambda_io_getc_inst, lambda_io_getc_impl, 0, 0,
 );
 
 lambda* lambda_io_getc = (lambda*)&lambda_io_getc_inst;
+
+static lambda* lambda_io_debug_impl(lambda* arg, lambda* self, lambda_cont* cont) {
+#if __x86_64__ || __i386__
+    __asm__("int3");
+#endif
+
+    lambda_unref(arg);
+    lambda_unref(self);
+
+    lambda_ref(lambda_io_error, 1);
+    return lambda_cont_call(lambda_io_error, cont);
+}
+
+LAMBDA_INSTANCE(lambda_io_debug_inst, lambda_io_debug_impl, 0, 0,
+    .captures = {},
+    .userdata = {}
+);
+
+lambda* lambda_io_debug = (lambda*)&lambda_io_debug_inst;
