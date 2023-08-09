@@ -39,6 +39,9 @@ struct lambda_cont {
 // a mask macro that selects userdata without the bit flags
 #define LAMBDA_LEN_USERDATA(l) ((l)->len_userdata & ~LAMBDA_USER_DESTRUCTOR)
 
+// a mask macro that selects userdata without the bit flags
+#define LAMBDA_HAS_USER_DESTRUCTOR(l) ((l)->len_userdata & LAMBDA_USER_DESTRUCTOR)
+
 // create a statically allocated instance of a lambda
 #define LAMBDA_INSTANCE(_name, _impl, _len_captures, _len_userdata, ...) \
     struct { \
