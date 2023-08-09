@@ -10,6 +10,7 @@ A Lambda Calculus to LLVM IR compiler
 ## Examples
 
 - a few example programs are found in the `examples/` subdirectory
+- you can create a new project by running `lambda-mkmake myproject` in a new folder
 
 ## Compilation
 
