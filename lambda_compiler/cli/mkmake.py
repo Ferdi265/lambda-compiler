@@ -14,11 +14,12 @@ def parse_args() -> Tuple[argparse.ArgumentParser, argparse.Namespace]:
 
     return ap, ap.parse_args()
 
-def write_file(name: str, content: str):
+def write_file(name: str, content: str, overwrite: bool = True):
     path = Path(name)
     path.parent.mkdir(exist_ok = True, parents = True)
-    with open(path, "w") as f:
-        f.write(content + "\n")
+    if overwrite or not path.exists():
+        with open(path, "w") as f:
+            f.write(content + "\n")
 
 def main():
     ap, args = parse_args()
@@ -33,7 +34,7 @@ def main():
         return
 
     write_file(bf.makefile.filename, bf.makefile.source_template.format(name = name))
-    write_file(bf.crate_lambda.filename_template.format(name = name), bf.crate_lambda.source)
+    write_file(bf.crate_lambda.filename_template.format(name = name), bf.crate_lambda.source, overwrite = False)
     write_file(bf.std_lambda.filename, bf.std_lambda.source)
     write_file(bf.io_lambda.filename, bf.io_lambda.source)
     write_file(bf.io_c.filename, bf.io_c.source)
