@@ -1,5 +1,5 @@
 filename = "Makefile"
-source_template = """
+source_template = r"""
 CLANG       := clang
 MAIN        := {name}
 TARGET      := lambda-$(MAIN)

@@ -1,5 +1,5 @@
 filename = "src/std.lambda"
-source = """
+source = r"""
 pub true = a -> b -> a;
 pub false = a -> b -> b;
 
@@ -17,6 +17,7 @@ pub 2nd = p -> p false;
 pub ident = a -> a;
 pub y = g -> (f -> f f) f -> g x -> f f x;
 pub error = y (error -> _ -> error);
+pub do = y do -> arg -> f -> do (f arg);
 
 pub while = y while -> cond -> f -> initial ->
     cond initial

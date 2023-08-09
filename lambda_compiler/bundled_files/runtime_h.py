@@ -1,5 +1,5 @@
 filename = "src/lambda.h"
-source = """
+source = r"""
 #ifndef _LAMBDA_H
 #define _LAMBDA_H
 
@@ -42,7 +42,10 @@ struct lambda_cont {
 #define LAMBDA_USER_DESTRUCTOR 1
 
 // a mask macro that selects userdata without the bit flags
-#define LAMBDA_LEN_USERDATA(l) ((l)->len_userdata & ~LAMBDA_USER_DESTRUCTOR)
+#define LAMBDA_HAS_USER_DESTRUCTOR(l) ((l)->header.len_userdata & LAMBDA_USER_DESTRUCTOR)
+
+// a mask macro that selects userdata without the bit flags
+#define LAMBDA_LEN_USERDATA(l) ((l)->header.len_userdata & ~LAMBDA_USER_DESTRUCTOR)
 
 // create a statically allocated instance of a lambda
 #define LAMBDA_INSTANCE(_name, _impl, _len_captures, _len_userdata, ...) \

@@ -1,5 +1,5 @@
 filename = "src/io.c"
-source = """
+source = r"""
 #include <stdio.h>
 #include "lambda.h"
 

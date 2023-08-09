@@ -1,5 +1,5 @@
 filename = "src/runtime.c"
-source = """
+source = r"""
 #include <stddef.h>
 #include <stdnoreturn.h>
 #include <stdlib.h>
@@ -62,7 +62,7 @@ void lambda_unref(lambda* l) {
         return;
     }
 
-    if (l->header.len_userdata & LAMBDA_USER_DESTRUCTOR) {
+    if (LAMBDA_HAS_USER_DESTRUCTOR(l)) {
         void* userdata = lambda_userdata(l);
         ((lambda_destructor*)userdata)(userdata);
     }

@@ -1,5 +1,5 @@
 filename = "src/io.lambda"
-source = """
+source = r"""
 extern crate std;
 use std::*;
 

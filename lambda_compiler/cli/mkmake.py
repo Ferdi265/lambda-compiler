@@ -18,7 +18,7 @@ def write_file(name: str, content: str):
     path = Path(name)
     path.parent.mkdir(exist_ok = True, parents = True)
     with open(path, "w") as f:
-        f.write(content)
+        f.write(content + "\n")
 
 def main():
     ap, args = parse_args()
