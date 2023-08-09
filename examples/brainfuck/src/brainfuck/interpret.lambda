@@ -7,6 +7,17 @@ pub EXECUTE = !0;
 pub SKIP = !1;
 pub RSKIP = !2;
 
+impure bfgetc = _ ->
+    set (io::getc ident) c ->
+    if (equal io::eof c)
+        then (_ ->
+            !255
+        )
+        else (_ ->
+            c
+        )
+    fi;
+
 pub impure run = y interpret -> state -> nestcount -> code -> data -> (
     set (code get_val) op ->
     set (data get_val) val ->
@@ -36,7 +47,7 @@ pub impure run = y interpret -> state -> nestcount -> code -> data -> (
                     interpret EXECUTE !0 code data
                 )
                 case !',' (_ ->
-                    set (data set_val (io::getc ident)) data ->
+                    set (data set_val (bfgetc ident)) data ->
                     interpret EXECUTE !0 code data
                 )
                 case !'[' (_ ->
