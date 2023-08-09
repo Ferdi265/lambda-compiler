@@ -22,10 +22,12 @@ setup(
         "lambda_compiler.passes.mlir",
         "lambda_compiler.passes.llir",
         "lambda_compiler.pretty",
+        "lambda_compiler.bundled_files",
         "lambda_compiler.cli",
     ],
     entry_points = {
         "console_scripts": [
+            "lambda-mkmake=lambda_compiler.cli.mkmake:main",
             "lambda-lang2deps=lambda_compiler.cli.lang2deps:main",
             "lambda-lang2hlir=lambda_compiler.cli.lang2hlir:main",
             "lambda-hlir2hlis=lambda_compiler.cli.hlir2hlis:main",
