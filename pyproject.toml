@@ -1,0 +1,32 @@
+[build-system]
+requires            = ["setuptools>=61.0"]
+build-backend       = "setuptools.build_meta"
+
+[project]
+name                = "lambda_compiler"
+dynamic             = ["readme", "version", "dependencies"]
+authors             = [{ name = "Ferdinand Bachmann", email = "ferdinand.bachmann@yrlf.at" }]
+description         = "a Lambda Calculus to LLVM IR compiler"
+requires-python     = ">=3.10"
+classifiers         = [
+    "Programming Language :: Python :: 3",
+]
+
+[project.scripts]
+"lambda-mkmake"     = "lambda_compiler.cli.mkmake:main"
+"lambda-lang2deps"  = "lambda_compiler.cli.lang2deps:main"
+"lambda-lang2hlir"  = "lambda_compiler.cli.lang2hlir:main"
+"lambda-hlir2hlis"  = "lambda_compiler.cli.hlir2hlis:main"
+"lambda-hlir2mlir"  = "lambda_compiler.cli.hlir2mlir:main"
+"lambda-mlir2opt"   = "lambda_compiler.cli.mlir2opt:main"
+"lambda-mlir2llir"  = "lambda_compiler.cli.mlir2llir:main"
+"lambda-mlir2main"  = "lambda_compiler.cli.mlir2main:main"
+
+[project.urls]
+"Homepage"          = "https://github.com/Ferdi265/lambda-compiler"
+"Bug Tracker"       = "https://github.com/Ferdi265/lambda-compiler/issues"
+
+[tool.setuptools.dynamic]
+version             = { attr = "lambda_compiler.__version__" }
+readme              = { file = ["README.md"], content-type = "text/markdown" }
+dependencies        = { file = ["requirements.txt"] }
