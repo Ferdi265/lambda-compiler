@@ -4,8 +4,13 @@ A Lambda Calculus to LLVM IR compiler
 
 ## Installation
 
-- run `pip install git+https://github.com/Ferdi265/lambda-compiler` to install
-- run `pip install --editable .` for a development install
+- run `pipx install git+https://github.com/Ferdi265/lambda-compiler` to install
+- run `pipx install --editable .` for a development install
+
+`pipx` is a modern replacement for installing CLI applications with `pip`
+directly, since `pip` now by default forbids installing applications outside a
+virtualenv on most distros. You can use `pip` as well, but `pipx` is
+recommended.
 
 ## Examples
 
